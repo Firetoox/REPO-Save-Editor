@@ -1,0 +1,118 @@
+name: Release
+
+# Pushing a tag vX.Y.Z (equal to the version in package.json) builds the installer on GitHub,
+# runs all tests, records a build provenance attestation for the setup and creates a DRAFT release
+# with it. Complete the notes, then publish the draft; published releases cannot be changed.
+# A manual start is a trial run: build and tests only, the setup is kept as a workflow artifact for
+# a few days, nothing is attested or released.
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write # create the draft release
+      id-token: write # sign the attestation
+      attestations: write # store the attestation
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Tag matches the version in package.json
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match version $version in package.json"
+            exit 1
+          fi
+      - run: npm run lint
+      - run: npm test
+      # drives the app in an offscreen window on synthetic saves
+      - run: npm run test:ui
+      - run: npm run dist
+      - name: Test the packaged app
+        run: node test/ui-hidden.js --exe "dist/win-unpacked/REPO Save Editor.exe"
+      - name: Find the setup
+        id: setup
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          file="dist/REPO-Save-Editor-Setup-$version.exe"
+          test -f "$file"
+          {
+            echo "file=$file"
+            echo "version=$version"
+            echo "sha256=$(sha256sum "$file" | cut -d' ' -f1)"
+            echo "build=$(node -p "require('fs').readFileSync('lib/server.js', 'utf8').match(/TESTED_BUILD = '(\\d+)'/)[1]")"
+          } >> "$GITHUB_OUTPUT"
+      - name: Keep the setup of a trial run
+        if: github.event_name != 'push'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: setup-trial-run
+          path: ${{ steps.setup.outputs.file }}
+          retention-days: 5
+          if-no-files-found: error
+      - name: Attest build provenance
+        if: github.event_name == 'push'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ steps.setup.outputs.file }}
+      - name: Create the draft release
+        if: github.event_name == 'push'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FILE: ${{ steps.setup.outputs.file }}
+          VERSION: ${{ steps.setup.outputs.version }}
+          SHA256: ${{ steps.setup.outputs.sha256 }}
+          GAME_BUILD: ${{ steps.setup.outputs.build }}
+        run: |
+          name="$(basename "$FILE")"
+          cat > notes.md <<'EOF'
+          ## Deutsch
+
+          Windows-App zum Sichern, Bearbeiten und Wiederherstellen von R.E.P.O.-Spielständen: Run-Werte, Spieler-Upgrades, Waffen und Items im Truck, Cosmetics, Profile, Backups mit Vergleich und Wiederherstellen, Expertenmodus. Oberfläche auf Deutsch und Englisch.
+
+          <!-- Neu in dieser Version: hier ergänzen (Deutsch und Englisch) oder löschen. -->
+
+          **Installieren:** `@NAME@` herunterladen und ausführen. Der Installer ist nicht signiert; zeigt Windows „Der Computer wurde durch Windows geschützt“, dann **Weitere Informationen → Trotzdem ausführen**. Eine installierte Version wird ersetzt, Backups und Profile bleiben erhalten. Vor dem Speichern R.E.P.O. schließen.
+
+          **Herkunft prüfen:** Das Setup wurde auf GitHub aus dem Tag `@TAG@` gebaut. Mit der GitHub CLI: `gh attestation verify @NAME@ -R @REPO@`
+
+          ## English
+
+          Windows app to back up, edit and restore R.E.P.O. save games: run values, player upgrades, weapons and items in the truck, cosmetics, profiles, backups with compare and restore, expert mode. User interface in German and English.
+
+          **Install:** download and run `@NAME@`. The installer is not code-signed; if Windows says "Windows protected your PC", click **More info → Run anyway**. An installed version is replaced, backups and profiles are kept. Close R.E.P.O. before saving.
+
+          **Verify the origin:** the setup was built on GitHub from the tag `@TAG@`. With the GitHub CLI: `gh attestation verify @NAME@ -R @REPO@`
+
+          ---
+
+          Unofficial fan tool, not affiliated with semiwork. Windows x64 · tested with R.E.P.O. Steam build @BUILD@.
+
+          SHA-256 `@NAME@`: `@SHA256@`
+          EOF
+          sed -i -e "s|@NAME@|$name|g" -e "s|@TAG@|$GITHUB_REF_NAME|g" -e "s|@REPO@|$GITHUB_REPOSITORY|g" \
+            -e "s|@BUILD@|$GAME_BUILD|g" -e "s|@SHA256@|$SHA256|g" notes.md
+          gh release create "$GITHUB_REF_NAME" "$FILE" --draft --verify-tag --title "REPO Save Editor $VERSION" --notes-file notes.md
