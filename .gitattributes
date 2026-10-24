@@ -1,0 +1,7 @@
+# Text files are stored with LF; Git converts them for the checkout.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.woff2 binary
+*.es3 binary

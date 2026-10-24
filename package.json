@@ -1,0 +1,116 @@
+{
+  "name": "repo-save-editor",
+  "productName": "REPO Save Editor",
+  "version": "1.0.0",
+  "description": "Back up, edit and restore R.E.P.O. save games (German and English) – unofficial fan tool",
+  "keywords": [
+    "repo",
+    "r.e.p.o.",
+    "save-editor",
+    "easy-save-3",
+    "electron",
+    "windows"
+  ],
+  "author": "Firetoox",
+  "homepage": "https://github.com/Firetoox/REPO-Save-Editor#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Firetoox/REPO-Save-Editor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Firetoox/REPO-Save-Editor/issues"
+  },
+  "license": "MIT",
+  "private": true,
+  "main": "electron/main.js",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "electron .",
+    "serve": "node server.js",
+    "postinstall": "node node_modules/electron/install.js",
+    "test": "node --test test/unit.js test/roundtrip.js test/api.js",
+    "test:ui": "node test/ui-hidden.js",
+    "lint": "node scripts/lint.js",
+    "screenshots": "node test/ui-hidden.js --lang de --shots docs/screenshots/de && node test/ui-hidden.js --lang en --shots docs/screenshots/en",
+    "fixtures": "node test/fixtures.js",
+    "update-cosmetics": "node scripts/update-cosmetics.js",
+    "dist": "electron-builder --win nsis --x64 --publish never"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "electron": "44.9.2",
+    "electron-builder": "26.15.3",
+    "eslint": "10.12.0",
+    "globals": "17.13.0"
+  },
+  "build": {
+    "appId": "de.reposaveeditor.app",
+    "productName": "REPO Save Editor",
+    "copyright": "Copyright © 2026 Firetoox – unofficial fan tool, not affiliated with semiwork",
+    "publish": null,
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**",
+      "lib/**",
+      "public/**",
+      "package.json",
+      "LICENSE"
+    ],
+    "extraFiles": [
+      {
+        "from": "LICENSE",
+        "to": "LICENSE.txt"
+      },
+      {
+        "from": "THIRD-PARTY-NOTICES.md",
+        "to": "THIRD-PARTY-NOTICES.txt"
+      },
+      {
+        "from": "public/fonts/OFL-LICENSES.txt",
+        "to": "LICENSES.fonts.txt"
+      }
+    ],
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true,
+      "grantFileProtocolExtraPrivileges": false
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "REPO Save Editor",
+      "uninstallDisplayName": "REPO Save Editor",
+      "installerLanguages": [
+        "en_US",
+        "de_DE"
+      ],
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true,
+      "artifactName": "REPO-Save-Editor-Setup-${version}.${ext}",
+      "multiLanguageInstaller": true
+    }
+  }
+}

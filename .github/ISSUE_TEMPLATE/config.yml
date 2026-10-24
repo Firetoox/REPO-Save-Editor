@@ -1,0 +1,3 @@
+# Security problems: GitHub shows "Report a vulnerability" here once private vulnerability
+# reporting is enabled (Settings → Code security), see SECURITY.md.
+blank_issues_enabled: true

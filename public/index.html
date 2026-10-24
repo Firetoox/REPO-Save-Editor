@@ -1,0 +1,2190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>REPO Save Editor</title>
+<style>
+/* Fonts ship with the app (SIL Open Font License, see fonts/OFL-LICENSES.txt) */
+@font-face { font-family: 'Chakra Petch'; font-weight: 500; font-display: swap; src: url(/fonts/chakra-petch-latin-500-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Chakra Petch'; font-weight: 600; font-display: swap; src: url(/fonts/chakra-petch-latin-600-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Chakra Petch'; font-weight: 700; font-display: swap; src: url(/fonts/chakra-petch-latin-700-normal.woff2) format('woff2'); }
+@font-face { font-family: 'IBM Plex Sans'; font-weight: 400; font-display: swap; src: url(/fonts/ibm-plex-sans-latin-400-normal.woff2) format('woff2'); }
+@font-face { font-family: 'IBM Plex Sans'; font-weight: 500; font-display: swap; src: url(/fonts/ibm-plex-sans-latin-500-normal.woff2) format('woff2'); }
+@font-face { font-family: 'IBM Plex Sans'; font-weight: 600; font-display: swap; src: url(/fonts/ibm-plex-sans-latin-600-normal.woff2) format('woff2'); }
+@font-face { font-family: 'IBM Plex Mono'; font-weight: 400; font-display: swap; src: url(/fonts/ibm-plex-mono-latin-400-normal.woff2) format('woff2'); }
+@font-face { font-family: 'IBM Plex Mono'; font-weight: 500; font-display: swap; src: url(/fonts/ibm-plex-mono-latin-500-normal.woff2) format('woff2'); }
+
+:root {
+  color-scheme: dark;
+  --bg: #111214; --bg2: #141518; --top: #16171A; --panel: #1A1C20; --panel2: #1F2226; --raise: #22252A; --chip: #26292F;
+  --line: #2A2D33; --line2: #33373E; --line3: #3A3F46; --field-line: #646A74;
+  --text: #ECEAE4; --soft: #C9CDD3; --muted: #9BA0A8; --dim: #8A9099;
+  --accent: #F5A524; --on-accent: #17120A; --info: #6FB8FF; --info-bg: #1C2530; --info-fg: #BFDDFF;
+  --warn-bg: #2A2113; --warn-fg: #F7DDB0; --bad: #FF8A7A; --bad-bg: #2E1A1A; --bad-fg: #FFD3CC; --ok: #5FD1A8;
+  --crown: #E8C468; --kept: #CFD6DF; --removed: #7A3B3B; --code-bg: #0D0E10;
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+  --display: 'Chakra Petch', 'Segoe UI', sans-serif;
+  --sans: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; line-height: 1.45; }
+body { min-height: 100vh; display: flex; flex-direction: column; }
+#app { flex: 1; display: flex; flex-direction: column; }
+h1, h2, h3, p { margin: 0; }
+button, select { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .4; }
+button:not(:disabled):hover { filter: brightness(1.18); }
+:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; flex: none; }
+::placeholder { color: #7E848C; }
+
+/* small utilities */
+.mono { font-family: var(--mono); }
+.muted { color: var(--muted); }
+.dim { color: var(--dim); }
+.small { font-size: 12px; }
+.strong { font-weight: 600; }
+.plain { font-weight: 400; }
+.shrink { min-width: 0; }
+.wrap { overflow-wrap: anywhere; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.caps { font-family: var(--display); font-weight: 600; font-size: inherit; letter-spacing: .08em; text-transform: uppercase; }
+.vstack { display: flex; flex-direction: column; gap: 10px; }
+.hstack { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.between { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.fill { flex: 1; }
+.noshrink { flex: none; }
+.gap-0 { gap: 0; }
+.gap-6 { gap: 6px; }
+.gap-12 { gap: 12px; }
+.mt-6 { margin-top: 6px; }
+.mt-12 { margin-top: 12px; }
+.inset { padding: 0 4px; }
+.text-13 { font-size: 13px; }
+.figure { font-family: var(--display); font-weight: 700; }
+.c-accent { color: var(--accent); }
+.c-ok { color: var(--ok); }
+.c-bad { color: var(--bad); }
+.c-info { color: var(--info); }
+.c-soft { color: var(--soft); }
+.c-crown { color: var(--crown); }
+/* a checkbox with its label text */
+.option { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+
+/* top bar */
+.topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; padding: 14px 24px; background: var(--top); border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 12px; }
+.logo { width: 40px; height: 40px; border-radius: 10px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; flex: none; }
+.brand-name { font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: .08em; }
+.top-right { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-width: 0; }
+.pill { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; border-radius: 999px; font-size: 13px; border: 0; }
+.pill .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.pill.warn { background: var(--warn-bg); color: var(--warn-fg); }
+.pill.warn .dot { background: var(--accent); }
+.pill.info { background: var(--info-bg); color: var(--info-fg); }
+.pill.info .dot { background: var(--info); }
+.pathchip { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; border-radius: 8px; background: var(--panel2); border: 1px solid var(--line); font-family: var(--mono); font-size: 12px; color: var(--soft); max-width: 100%; min-width: 0; }
+.pathchip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* buttons */
+.btn { min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line3); background: var(--panel2); display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+.btn.sm { min-height: 36px; padding: 0 12px; border-radius: 8px; }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--soft); }
+.btn.primary { border: 0; background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.btn.danger { border-color: #8A4A42; color: var(--bad-fg); }
+.btn.wide { width: 100%; }
+.badge { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; font-size: 12px; font-weight: 600; display: inline-grid; place-items: center; background: var(--chip); color: var(--muted); }
+.badge.on { background: var(--accent); color: var(--on-accent); }
+.btn.primary .badge { background: var(--on-accent); color: var(--accent); }
+.iconbtn { width: 32px; height: 32px; border-radius: 8px; border: 0; background: transparent; color: var(--muted); display: grid; place-items: center; flex: none; }
+.iconbtn.accent { background: var(--chip); color: var(--accent); }
+.step { width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--field-line); background: var(--raise); display: grid; place-items: center; flex: none; }
+.step.sm { width: 36px; height: 36px; border-radius: 8px; }
+.step.xs { width: 30px; height: 30px; border-radius: 7px; }
+
+/* layout */
+.layout { flex: 1; display: flex; flex-wrap: wrap; align-items: stretch; }
+.sidebar { flex: 1 1 260px; padding: 20px 16px; background: var(--bg2); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 20px; }
+.main { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; }
+.savebtn { width: 100%; text-align: left; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: transparent; display: flex; flex-direction: column; gap: 4px; }
+.savebtn.active { border-color: var(--accent); background: var(--panel2); }
+.savebtn .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.lvl { font-family: var(--display); font-weight: 600; font-size: 12px; padding: 2px 8px; border-radius: 6px; background: var(--chip); flex: none; }
+.card { padding: 16px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
+.card.changed { border-color: var(--accent); }
+.card.upcard { padding: 14px 16px; }
+.card.battery { flex-wrap: wrap; gap: 12px; }
+.savehead { padding: 24px 28px 0; display: flex; flex-direction: column; gap: 18px; }
+.headrow { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px; }
+h1 { margin-top: 6px; font-family: var(--display); font-size: 34px; line-height: 1.1; font-weight: 700; letter-spacing: .02em; overflow-wrap: anywhere; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 8px; color: var(--muted); }
+.meta strong { color: var(--text); font-weight: 600; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.actions.rawbar { align-items: center; }
+.actions.end { justify-content: flex-end; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); }
+.tab { min-height: 44px; padding: 10px 14px; margin-bottom: -1px; background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--muted); font-family: var(--display); font-weight: 600; font-size: 14px; letter-spacing: .06em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 8px; }
+.tab[aria-current="page"] { color: var(--text); border-bottom-color: var(--accent); }
+.tab .badge { font-family: var(--sans); font-size: 11px; min-width: 20px; height: 20px; }
+.body { display: flex; flex-wrap: wrap; gap: 24px; padding: 24px 28px 48px; align-items: flex-start; }
+.body.notice-only { padding-bottom: 0; }
+.content { flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.aside { flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 16px; position: sticky; top: 16px; }
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.grid.up { gap: 12px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.grid.items { gap: 12px; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+.grid.cos { gap: 10px; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.grid.prices { gap: 8px 16px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+.grid.profiles { gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+
+/* fields */
+.field-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.key { font-family: var(--mono); font-size: 12px; color: var(--dim); overflow-wrap: anywhere; }
+.stepper { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
+.bignum { flex: 1; min-width: 0; width: 100%; text-align: center; font-family: var(--display); font-size: 30px; font-weight: 700; background: transparent; border: 0; color: var(--text); padding: 0; }
+.foot { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chip { min-height: 32px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--field-line); background: transparent; color: var(--soft); font-size: 12px; }
+.textin { min-height: 44px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--field-line); background: var(--bg); color: var(--text); font: inherit; font-size: 16px; width: 100%; }
+.select { min-height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--field-line); background: var(--panel); color: var(--text); }
+.rowlabel { width: 80px; }
+.teamrow { gap: 12px 20px; }
+.teamrow > .vstack { flex: 1 1 260px; }
+
+/* players */
+.players { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.pbtn { text-align: left; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); display: flex; align-items: center; gap: 12px; min-height: 64px; }
+.pbtn[aria-pressed="true"] { border-color: var(--accent); background: var(--raise); }
+.avatar { width: 40px; height: 40px; border-radius: 10px; color: #111214; display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 18px; flex: none; }
+.cdot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: inline-block; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: center; justify-content: space-between; }
+.hpbar { gap: 16px 28px; }
+.crownopt { align-items: center; min-height: 44px; }
+.mini { display: flex; align-items: center; gap: 4px; flex: none; }
+.mini .heal { margin-left: 8px; }
+.midnum { width: 48px; text-align: center; font-family: var(--display); font-size: 20px; font-weight: 700; background: transparent; border: 0; color: var(--text); padding: 0; }
+.midnum.wide { width: 72px; }
+.midnum.c-accent { color: var(--accent); }
+.pips { display: flex; align-items: center; gap: 4px; margin-top: 12px; }
+.pip { flex: 1; height: 8px; border-radius: 2px; background: var(--line2); }
+.pip.kept { background: var(--kept); }
+.pip.added { background: var(--accent); }
+.pip.removed { background: var(--removed); }
+.pips .note { min-width: 70px; text-align: right; }
+.pricerow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.pricerow .name { font-weight: 500; }
+.pricenum { min-width: 34px; text-align: center; }
+
+/* items and cosmetics */
+.search { position: relative; flex: 1 1 260px; min-width: 0; }
+.search svg { position: absolute; left: 12px; top: 13px; }
+.search input { width: 100%; min-height: 44px; padding: 0 12px 0 40px; border-radius: 10px; border: 1px solid var(--field-line); background: var(--panel); color: var(--text); font: inherit; }
+.catbtn { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--field-line); background: transparent; color: var(--soft); display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.catbtn[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--bg); }
+.catbtn .count { opacity: .7; }
+.sq { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.itemcard { padding: 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px; }
+.itemcard.owned { background: var(--panel2); border-color: var(--line3); }
+.itemcard.changed { border-color: var(--accent); }
+.itemtop { display: flex; gap: 12px; align-items: center; }
+.itemicon { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; flex: none; }
+.itemkey { font-family: var(--mono); font-size: 11px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.addbtn { min-height: 40px; border-radius: 8px; border: 1px dashed var(--field-line); background: transparent; color: var(--soft); display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.countbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px; border-radius: 8px; background: var(--bg); }
+.countbar .step { border: 0; border-radius: 6px; }
+.countmid { display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+.countmid .count { font-size: 18px; }
+.countmid .note { font-size: 11px; }
+.truckchip { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line2); background: var(--raise); font-size: 13px; }
+.truckchip.changed { border-color: var(--accent); }
+.truckhead { flex-wrap: wrap; align-items: baseline; }
+.coscard { text-align: left; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; gap: 4px; min-height: 64px; }
+.coscard.on { background: var(--panel2); border-color: var(--line3); }
+.coscard.changed { border-color: var(--accent); }
+.coscard:disabled { opacity: .85; cursor: default; }
+.coscard .st { font-size: 11px; display: inline-flex; align-items: center; gap: 6px; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.rar { font-size: 11px; line-height: 1.5; padding: 0 6px; border-radius: 5px; font-weight: 500; }
+.rar.fixed { color: var(--soft); background: var(--chip); }
+
+/* backups table */
+.table { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.trow { display: grid; grid-template-columns: 130px 150px minmax(0, 1fr) 48px 90px auto; gap: 12px; padding: 10px 16px; align-items: center; border-top: 1px solid var(--line); }
+.trow.head { border-top: 0; background: var(--top); font-size: 12px; color: var(--muted); }
+.trow .acts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 12px; }
+.tag.accent { background: var(--accent-soft); color: var(--accent); }
+.tag.info { background: var(--info-bg); color: var(--info-fg); }
+.tag.bad { background: var(--bad-bg); color: var(--bad-fg); }
+.trow .caps-num { font-family: var(--display); font-weight: 600; }
+.trow .file { color: var(--soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* changes, notices, dialogs */
+.changes { display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow-y: auto; margin-top: 12px; }
+.change { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 10px; border-radius: 8px; background: var(--raise); }
+.change .lbl, .change .val { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.change.metabackup { align-items: stretch; gap: 6px; }
+.more { padding: 0 10px; }
+.changes > .more { padding: 4px 10px; }
+.steps { margin: 12px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.steps li { display: flex; gap: 12px; }
+.num { width: 24px; height: 24px; border-radius: 6px; background: var(--chip); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 13px; flex: none; }
+.notice { padding: 14px 16px; border-radius: 12px; display: flex; gap: 10px; align-items: flex-start; font-size: 13px; }
+.notice > svg { flex: none; margin-top: 1px; }
+.notice.warn { background: var(--warn-bg); color: var(--warn-fg); }
+.notice.info { background: var(--info-bg); color: #D6E8FF; }
+.rawbox { width: 100%; min-height: 60vh; resize: vertical; padding: 14px; border-radius: 12px; border: 1px solid var(--field-line); background: var(--code-bg); color: var(--soft); font-family: var(--mono); font-size: 12.5px; line-height: 1.5; tab-size: 2; white-space: pre; }
+.overlay { position: fixed; inset: 0; background: rgba(8, 9, 10, .74); display: grid; place-items: center; padding: 16px; z-index: 50; }
+.dialog { width: 100%; max-width: 580px; max-height: calc(100vh - 32px); overflow-y: auto; background: var(--panel); border: 1px solid var(--line2); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+.dialog.wide { max-width: 760px; }
+.dialog h2 { font-family: var(--display); font-size: 24px; font-weight: 700; }
+.pathbox { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 10px; background: var(--bg); font-size: 13px; }
+.pathbox .mono { font-size: 12px; color: var(--soft); overflow-wrap: anywhere; }
+.kv { display: grid; grid-template-columns: 170px 1fr; gap: 8px 16px; font-size: 13px; }
+.kv .mono { font-size: 12px; color: var(--soft); overflow-wrap: anywhere; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); padding: 12px 12px 12px 16px; border-radius: 12px; background: var(--text); color: var(--bg); display: flex; align-items: center; gap: 10px; z-index: 60; box-shadow: 0 8px 24px rgba(0, 0, 0, .4); }
+.toast.error { background: var(--bad-fg); color: #2E1A1A; }
+.toast button { min-height: 32px; padding: 0 12px; border-radius: 8px; border: 0; background: var(--bg); color: var(--text); flex: none; }
+.toast button:focus-visible { outline-color: #111214; }
+.langswitch { display: inline-flex; border: 1px solid var(--line3); border-radius: 8px; overflow: hidden; flex: none; }
+.langswitch button { min-height: 36px; min-width: 40px; padding: 0 10px; border: 0; background: transparent; color: var(--soft); font-family: var(--display); font-weight: 600; letter-spacing: .06em; }
+.langswitch button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
+.empty { padding: 32px; border-radius: 12px; border: 1px dashed var(--line2); text-align: center; color: var(--muted); }
+.empty.boot { margin: 40px; }
+</style>
+</head>
+<body>
+<div id="app"><div class="empty boot">…</div></div>
+<div id="toast" aria-live="polite"></div>
+<script>
+'use strict';
+/*
+ * REPO Save Editor – user interface (vanilla JS, no framework).
+ *
+ * Rendering: every state change calls render(), which rebuilds #app from the view functions.
+ *   Views return html`` templates: values inside ${} are escaped automatically; only results of
+ *   html``, tx() and svg() are inserted as markup. Do not build markup by string concatenation.
+ * Languages: German and English. Every text lives in TEXTS ([German, English]); t() returns plain
+ *   text, tp() plural text, tx() markup with fragments in its placeholders. Catalog labels from the
+ *   server come as { de, en } and are picked with L(). The server answers in the language sent in
+ *   the X-REPO-Lang header; the choice is stored in settings.json (none stored = system language).
+ * Focus: render() puts focus, caret and typed-but-uncommitted number text back afterwards. Inputs are
+ *   identified by data-fk, buttons by their data-* attributes. Scroll boxes carry data-keep-scroll.
+ * Events are delegated on document:
+ *   data-act   clicks, see ACTIONS (the view is rendered again afterwards unless NO_RENDER is returned)
+ *   data-text  text inputs (input event)      data-num  number inputs (change event, not per keystroke)
+ *   data-check checkboxes                     data-sel  selects
+ *   data-raw   expert textarea (updates state only; no re-render while typing)
+ * The server only accepts requests with the session token from the URL (#token=…).
+ * test/ui-hidden.js drives this page through its top-level names (S, render, ACTIONS, TEXTS, t, …):
+ * renaming one of them means updating that test too.
+ */
+
+// ---------- state ----------------------------------------------------------------------------
+const S = {
+  lang: 'en',                       // 'de' | 'en'
+  server: null,                     // /api/state: catalog, cosmetics, limits, paths, game build, settings
+  saves: [], saveId: null,
+  loaded: null,                     // { hash, model, info, file } as read from disk
+  edit: null,                       // working copy of loaded.model
+  view: 'save', tab: 'run', playerId: null,
+  items: { cat: 'all', q: '' },
+  backups: null,
+  raw: null,                        // expert mode: { hash, text, original }
+  meta: null, metaEdit: null, metaError: null, metaBackups: null,   // MetaSave (cosmetics); metaEdit = Set of ids
+  cos: { cat: 'all', type: '', show: 'all', rarity: 'all', q: '' },
+  profiles: [],
+  autoBackup: true,                 // stored by the server (settings.json), loaded with /api/state
+  modal: null, modalReturn: null, toast: null, busy: false, error: null
+};
+
+const TOKEN = new URLSearchParams(location.hash.slice(1)).get('token') || '';
+const NO_RENDER = Symbol('no render');
+const LANGUAGES = ['de', 'en'];
+const LOCALES = { de: 'de-DE', en: 'en-US' };
+const PLAYER_COLORS = ['#FF9B6A', '#6FB8FF', '#B28CFF', '#5FD1A8', '#E8C468', '#F07A8A'];
+const COS_CATEGORIES = [['Head', 'var(--accent)'], ['Body', 'var(--info)'], ['Arms', '#B28CFF'], ['Legs', 'var(--ok)']];
+const RARITY_COLORS = ['#A9B6C4', '#5FD1A8', '#6FB8FF', '#C9A2FF']; // index = rarity (Common … Ultra Rare)
+const UPGRADE_DOT = '#7FD4E8';
+const PIPS = 10; // upgrade levels shown as bars (higher levels are possible)
+const POLL_MS = 4000;
+const TOAST_MS = 8000;
+
+// ---------- texts (German | English) ----------------------------------------------------------------
+// Every text of the page: [German, English]. Plural entries are [[one, many], [one, many]].
+// Placeholders {name} are filled by t()/tp() (plain text) or tx() (may insert markup, see below).
+const TEXTS = {
+  // start and connection
+  'boot.loading': ['Wird geladen …', 'Loading…'],
+  'boot.noToken': ['Diese Seite muss über den Editor geöffnet werden.', 'This page must be opened through the editor.'],
+  'boot.failed': ['Verbindung zum Editor fehlgeschlagen: {error}', 'Could not connect to the editor: {error}'],
+  'api.offline': ['Keine Verbindung zum Editor.', 'No connection to the editor.'],
+  'api.badAnswer': ['Ungültige Antwort vom Editor ({status})', 'Invalid response from the editor ({status})'],
+  'api.error': ['Fehler {status}', 'Error {status}'],
+
+  // numbers of things
+  'n.change': [['{n} Änderung', '{n} Änderungen'], ['{n} change', '{n} changes']],
+  'n.changeWill': [['{n} Änderung wird', '{n} Änderungen werden'], ['{n} change', '{n} changes']],
+  'n.unsaved': [['{n} nicht gespeicherte Änderung', '{n} nicht gespeicherte Änderungen'], ['{n} unsaved change', '{n} unsaved changes']],
+  'n.player': [['{n} Spieler', '{n} Spieler'], ['{n} player', '{n} players']],
+  'n.level': [['{n} Upgrade-Stufe', '{n} Upgrade-Stufen'], ['{n} upgrade level', '{n} upgrade levels']],
+  'n.item': [['{n} Item', '{n} Items'], ['{n} item', '{n} items']],
+  'n.kind': [['{n} Sorte', '{n} Sorten'], ['{n} kind', '{n} kinds']],
+  'n.runValue': [['{n} Run-Wert', '{n} Run-Werte'], ['{n} run value', '{n} run values']],
+  'n.upgrade': [['{n} Upgrade', '{n} Upgrades'], ['{n} upgrade', '{n} upgrades']],
+  'n.editorBackup': [['{n} Editor-Backup', '{n} Editor-Backups'], ['{n} editor backup', '{n} editor backups']],
+  'n.gameBackup': [['{n} Spiel-Backup', '{n} Spiel-Backups'], ['{n} game backup', '{n} game backups']],
+  'n.token': [['{n} Cosmetic-Token', '{n} Cosmetic-Tokens'], ['{n} cosmetic token', '{n} cosmetic tokens']],
+  'n.diff': [['{n} Unterschied', '{n} Unterschiede'], ['{n} difference', '{n} differences']],
+  'n.cosUnlock': [['{n} Cosmetic wird freigeschaltet', '{n} Cosmetics werden freigeschaltet'], ['{n} cosmetic will be unlocked', '{n} cosmetics will be unlocked']],
+  'n.cosLock': [['{n} Cosmetic wird gesperrt', '{n} Cosmetics werden gesperrt'], ['{n} cosmetic will be locked', '{n} cosmetics will be locked']],
+
+  // common words and buttons
+  'common.before': ['vorher {value}', 'was {value}'],
+  'common.unchanged': ['unverändert', 'unchanged'],
+  'common.yes': ['ja', 'yes'],
+  'common.no': ['nein', 'no'],
+  'common.more': ['+ {n} weitere', '+ {n} more'],
+  'common.loading': ['Wird geladen …', 'Loading…'],
+  'btn.cancel': ['Abbrechen', 'Cancel'],
+  'btn.close': ['Schließen', 'Close'],
+  'btn.reload': ['Neu laden', 'Reload'],
+  'btn.discard': ['Verwerfen', 'Discard'],
+  'btn.write': ['Änderungen speichern', 'Save changes'],
+  'btn.writeNow': ['Jetzt speichern', 'Save now'],
+  'btn.writing': ['Wird gespeichert …', 'Saving…'],
+  'btn.duplicate': ['Kopie anlegen', 'Duplicate'],
+  'btn.backup': ['Backup erstellen', 'Create backup'],
+  'btn.restore': ['Wiederherstellen', 'Restore'],
+  'btn.openSaves': ['Spielstand-Ordner öffnen', 'Open save folder'],
+  'btn.openBackups': ['Backup-Ordner öffnen', 'Open backup folder'],
+  'step.less': ['{label} verringern', 'Decrease {label}'],
+  'step.more': ['{label} erhöhen', 'Increase {label}'],
+  'change.undo': ['Änderung zurücknehmen: {label}', 'Undo change: {label}'],
+  'filter.all': ['Alle', 'All'],
+  'filter.category': ['Kategorie', 'Category'],
+  'filter.rarity': ['Seltenheit', 'Rarity'],
+  'filter.status': ['Status', 'Status'],
+  'toast.close': ['Meldung schließen', 'Close message'],
+  'source.game': ['den Spieldateien', 'the game files'],
+  'source.builtin': ['der mitgelieferten Liste', 'the built-in list'],
+  'date.placeholder': ['<Datum>', '<date>'],
+
+  // top bar
+  'top.subtitle': ['Inoffizielles Fan-Tool für R.E.P.O.', 'Unofficial fan tool for R.E.P.O.'],
+  'top.running': ['R.E.P.O. läuft – vor dem Speichern schließen', 'R.E.P.O. is running – close it before saving'],
+  'top.closed': ['R.E.P.O. ist geschlossen', 'R.E.P.O. is not running'],
+  'top.unknown': ['R.E.P.O.-Status unbekannt', 'R.E.P.O. status unknown'],
+  'top.update': ['Spiel-Update seit dem letzten Test', 'Game updated since the last test'],
+  'top.info': ['Info', 'Info'],
+  'top.language': ['Sprache', 'Language'],
+
+  // sidebar
+  'side.saves': ['Spielstände', 'Saves'],
+  'side.found': ['{n} gefunden', '{n} found'],
+  'side.none': ['Keine Spielstände gefunden.', 'No saves found.'],
+  'side.refresh': ['Liste aktualisieren', 'Refresh list'],
+  'side.opened': ['Geöffnet', 'Currently open'],
+  'side.error': ['Fehler: {error}', 'Error: {error}'],
+  'side.cosUnlocked': ['{n} von {total} freigeschaltet', '{n} of {total} unlocked'],
+  'side.cosUnavailable': ['nicht verfügbar', 'not available'],
+  'side.backups': ['Backups', 'Backups'],
+  'side.autoBackup': ['Vor jedem Speichern automatisch sichern', 'Back up automatically before every save'],
+  'side.originalNote': ['Jeder Spielstand wird unverändert als {file} gesichert, sobald der Editor ihn zum ersten Mal findet.', 'Every save is backed up unchanged as {file} the first time the editor sees it.'],
+  'side.backupDir': ['Backup-Ordner', 'Backup folder'],
+
+  // no save open
+  'nosave.dirMissing': ['Der Spielstand-Ordner wurde nicht gefunden: {path} Trag einen anderen Ordner in {config} als {key} ein und starte den Editor neu.',
+    'The save folder was not found: {path} Enter a different folder as {key} in {config} and restart the editor.'],
+  'nosave.loading': ['Spielstand wird geladen …', 'Loading save…'],
+  'nosave.none': ['Keine Spielstände gefunden. Starte zuerst ein Spiel in R.E.P.O.', 'No saves found. Start a game in R.E.P.O. first.'],
+  'nosave.failed': ['Spielstand konnte nicht geladen werden: {error}', 'Could not load the save: {error}'],
+  'nosave.listFailed': ['Die Spielstände konnten nicht gelesen werden: {error}', 'Could not read the saves: {error}'],
+
+  // save password (read from the game files)
+  'pw.missing': ['Die Spielstände sind verschlüsselt. Das Passwort dafür liest der Editor aus den Spieldateien von R.E.P.O., aber {reason}. Trag den Spielordner in {config} als {key} ein und starte den Editor neu.',
+    'The saves are encrypted. The editor reads their password from the R.E.P.O. game files, but {reason}. Enter the game folder as {key} in {config} and restart the editor.'],
+  'pw.noGame': ['das Spiel wurde nicht gefunden', 'the game was not found'],
+  'pw.noDll': ['die Datei Assembly-CSharp.dll fehlt oder ist nicht lesbar', 'Assembly-CSharp.dll is missing or cannot be read'],
+  'pw.notFound': ['keiner der Texte in der Spieldatei öffnet die Spielstände', 'none of the strings in the game file opens the saves'],
+  'info.password': ['Spielstand-Passwort', 'Save game password'],
+  'info.passwordFound': ['aus den Spieldateien gelesen', 'read from the game files'],
+  'info.passwordMissing': ['nicht gefunden', 'not found'],
+
+  // save header and tabs
+  'save.fileLine': ['{file} · Easy Save 3 · AES-verschlüsselt', '{file} · Easy Save 3 · AES encrypted'],
+  'save.money': ['Geld', 'Money'],
+  'save.lives': ['Leben', 'Lives'],
+  'save.playtime': ['Spielzeit {time}', 'Play time {time}'],
+  'save.lastPlayed': ['Zuletzt gespielt {date}', 'Last played {date}'],
+  'tab.nav': ['Bereiche', 'Sections'],
+  'tab.run': ['Run & Team', 'Run & team'],
+  'tab.players': ['Spieler', 'Players'],
+  'tab.items': ['Waffen & Items', 'Weapons & items'],
+  'tab.profiles': ['Profile', 'Profiles'],
+  'tab.backups': ['Backups', 'Backups'],
+  'tab.raw': ['Experte', 'Expert'],
+
+  // run values and prices
+  'run.team': ['Teamname', 'Team name'],
+  'run.reset': ['{label} auf {value} zurücksetzen', 'Reset {label} to {value}'],
+  'prices.title': ['Upgrade-Preise', 'Upgrade prices'],
+  'prices.reset': ['Alle auf 0 setzen (Startpreise)', 'Reset all to 0 (starting prices)'],
+  'prices.label': ['{name}-Käufe', '{name} purchases'],
+  'prices.note': ['Gezählte Upgrade-Käufe in diesem Run. Jeder Kauf macht weitere Upgrades teurer; 0 entspricht den Startpreisen.',
+    'Upgrade purchases counted in this run. Every purchase makes further upgrades more expensive; 0 means starting prices.'],
+
+  // players
+  'players.multi': ['Mehrspielermodus: Es zählt nur der Spielstand des Hosts. Mitspieler werden über ihre Steam-ID zugeordnet; ihre Werte gelten, wenn du mit diesem Spielstand hostest.',
+    'Multiplayer: only the host\'s save counts. Other players are matched by their Steam ID; their values apply when you host with this save.'],
+  'players.none': ['In diesem Spielstand sind keine Spieler gespeichert.', 'This save has no players.'],
+  'players.select': ['Spieler auswählen', 'Select player'],
+  'players.hasCrown': ['hat die Krone', 'has the crown'],
+  'players.changed': ['geändert', 'changed'],
+  'players.hp': ['Aktuelle HP', 'Current HP'],
+  'players.noHp': ['Keine HP gespeichert', 'No HP stored'],
+  'players.healTitle': ['100 HP + 20 je Health-Stufe', '100 HP + 20 per Health level'],
+  'players.heal': ['Voll heilen ({hp})', 'Full heal ({hp})'],
+  'players.crown': ['Krone', 'Crown'],
+  'players.allPlus': ['Alle Upgrades +1', 'All upgrades +1'],
+  'players.allTen': ['Alle Upgrades auf mindestens 10', 'All upgrades to at least 10'],
+  'players.copyAll': ['Diese Upgrades auf alle Spieler übertragen', 'Copy these upgrades to all players'],
+  'players.steamId': ['Steam-ID {id}', 'Steam ID {id}'],
+  'players.level': ['Stufe {n}', 'Level {n}'],
+  'players.over': ['+{n} über {max}', '+{n} above {max}'],
+  'players.unknownUpgrade': ['unbekanntes Upgrade', 'unknown upgrade'],
+
+  // items
+  'items.truck': ['Im Truck', 'In the truck'],
+  'items.truckCount': ['{items}, {kinds}', '{items}, {kinds}'],
+  'items.truckEmpty': ['Der Truck ist leer.', 'The truck is empty.'],
+  'items.batteries': ['Akkus', 'Batteries'],
+  'items.batteriesLow': ['{items} nicht voll geladen', '{items} not fully charged'],
+  'items.charge': ['Alle Akkus auf 100 % laden', 'Charge all batteries to 100%'],
+  'items.search': ['Item suchen …', 'Search items…'],
+  'items.searchLabel': ['Item suchen', 'Search items'],
+  'items.shown': ['{n} von {total} Items', '{n} of {total} items'],
+  'items.noHits': ['Keine Treffer. Ändere den Suchbegriff oder wähle „Alle“.', 'No matches. Change the search or choose "All".'],
+  'items.before': ['vorher ×{n}', 'was ×{n}'],
+  'items.overLimit': ['über Shop-Limit {max}', 'above shop limit {max}'],
+  'items.inTruck': ['im Truck', 'in the truck'],
+  'items.add': ['{label} hinzufügen', 'Add {label}'],
+  'items.addButton': ['Hinzufügen', 'Add'],
+  'items.disabled': ['deaktiviert', 'disabled'],
+  'items.note': ['Neue Items erscheinen beim Laden des nächsten Levels im Truck. Mehr als das Shop-Limit ist möglich, kann den Truck aber überfüllen.',
+    'New items appear in the truck when the next level loads. More than the shop limit is possible but can overfill the truck.'],
+
+  // profiles
+  'prof.note': ['Ein Profil ändert nur die Werte hier im Editor. Rechts siehst du danach jede Änderung und kannst sie einzeln zurücknehmen, bevor du speicherst.',
+    'A profile only changes the values here in the editor. Afterwards you see every change on the right and can undo each one before you save.'],
+  'prof.builtinTitle': ['Mitgelieferte Profile', 'Built-in profiles'],
+  'prof.ownTitle': ['Eigene Profile', 'Your profiles'],
+  'prof.saveCurrent': ['Aktuellen Stand als Profil speichern', 'Save current values as a profile'],
+  'prof.noneOwn': ['Noch keine eigenen Profile. Stell Werte ein und speichere sie als Profil, um sie auf andere Spielstände zu übertragen.',
+    'No profiles of your own yet. Set values and save them as a profile to apply them to other saves.'],
+  'prof.own': ['eigenes', 'custom'],
+  'prof.builtin': ['mitgeliefertes', 'built-in'],
+  'prof.min': ['Erhöht nur, senkt nie', 'Only raises, never lowers'],
+  'prof.exact': ['Setzt die Werte genau so', 'Sets the values exactly'],
+  'prof.apply': ['Anwenden', 'Apply'],
+  'prof.delete': ['Löschen', 'Delete'],
+  'prof.empty': ['leer', 'empty'],
+  'prof.up10.name': ['Alle Upgrades auf 10', 'All upgrades to 10'],
+  'prof.up10.desc': ['Jeder Spieler bekommt jedes Upgrade auf mindestens Stufe 10.', 'Every player gets every upgrade to at least level 10.'],
+  'prof.money.name': ['Startkapital', 'Starting money'],
+  'prof.money.desc': ['Mindestens {money} und 5 Leben.', 'At least {money} and 5 lives.'],
+  'prof.arsenal.name': ['Waffenkammer', 'Armory'],
+  'prof.arsenal.desc': ['Eine von jeder Schuss- und Nahkampfwaffe im Truck.', 'One of every gun and melee weapon in the truck.'],
+  'prof.heal.name': ['Lazarett', 'Field hospital'],
+  'prof.heal.desc': ['3 Health Packs jeder Größe und ein Defibro.', 'Three health packs of every size and one Defibro.'],
+
+  // backups
+  'backups.loading': ['Backups werden geladen …', 'Loading backups…'],
+  'backups.intro': ['Der Editor sichert jeden Spielstand als Original, sobald er ihn zum ersten Mal findet, und {when}. R.E.P.O. legt außerdem eigene BACKUP-Dateien im Spielstand-Ordner an. Vor dem Wiederherstellen wird der aktuelle Stand immer gesichert.',
+    'The editor backs up every save as the original the first time it sees it, and {when}. R.E.P.O. also keeps its own BACKUP files in the save folder. Before a restore the current version is always backed up.'],
+  'backups.whenOn': ['vor jedem Speichern erneut', 'again before every save'],
+  'backups.whenOff': ['vor dem Speichern nur, wenn das automatische Backup eingeschaltet ist', 'before saving only if automatic backup is on'],
+  'backups.date': ['Stand vom', 'Saved on'],
+  'backups.source': ['Quelle', 'Source'],
+  'backups.file': ['Datei', 'File'],
+  'backups.level': ['Level', 'Level'],
+  'backups.money': ['Geld', 'Money'],
+  'backups.actions': ['Aktionen', 'Actions'],
+  'backups.none': ['Keine Backups vorhanden.', 'No backups yet.'],
+  'backups.broken': ['beschädigt', 'damaged'],
+  'backups.compare': ['Vergleichen', 'Compare'],
+  'backups.compareLabel': ['Vergleichen: {file}', 'Compare: {file}'],
+  'backups.restoreLabel': ['Wiederherstellen: {file}', 'Restore: {file}'],
+  'backup.original': ['Editor · Original', 'Editor · original'],
+  'backup.beforeSave': ['Editor · vor dem Speichern', 'Editor · before save'],
+  'backup.manual': ['Editor · manuell', 'Editor · manual'],
+  'backup.beforeRestore': ['Editor · vor dem Wiederherstellen', 'Editor · before restore'],
+  'backup.editor': ['Editor', 'Editor'],
+  'backupShort.original': ['Original', 'Original'],
+  'backupShort.beforeSave': ['Vor dem Speichern', 'Before save'],
+  'backupShort.manual': ['Manuell', 'Manual'],
+  'backupShort.beforeRestore': ['Vor dem Wiederherstellen', 'Before restore'],
+  'backup.game': ['Spiel · {name}', 'Game · {name}'],
+
+  // expert mode
+  'raw.loading': ['Rohdaten werden geladen …', 'Loading raw data…'],
+  'raw.invalid': ['Kein gültiges JSON: {error}', 'Not valid JSON: {error}'],
+  'raw.valid': ['Gültiges JSON · unverändert', 'Valid JSON · unchanged'],
+  'raw.validChanged': ['Gültiges JSON · geändert', 'Valid JSON · changed'],
+  'raw.warning': ['Expertenmodus: Hier siehst du den kompletten entschlüsselten Spielstand. Falsche Werte können ihn unbrauchbar machen. Der Editor prüft das Format und sichert vorher (wenn das automatische Backup an ist).',
+    'Expert mode: this is the complete decrypted save. Wrong values can make it unusable. The editor checks the format and backs up first (if automatic backup is on).'],
+  'raw.pending': ['Es gibt noch {changes} aus den anderen Bereichen. Speichere oder verwirf sie zuerst, dann sind die Rohdaten aktuell.',
+    'You still have {changes} in the other sections. Save or discard them first so the raw data is current.'],
+  'raw.write': ['Rohdaten speichern', 'Save raw data'],
+  'raw.label': ['Spielstand als JSON', 'Save game as JSON'],
+
+  // cosmetics
+  'cos.unavailable': ['Cosmetics nicht verfügbar: {error}', 'Cosmetics not available: {error}'],
+  'cos.loading': ['Cosmetics werden geladen …', 'Loading cosmetics…'],
+  'cos.fileLine': ['{file} · gilt für alle Spielstände', '{file} · applies to all saves'],
+  'cos.unlockedOf': ['{n} von {total} freigeschaltet', '{n} of {total} unlocked'],
+  'cos.equippedCount': ['{n} ausgerüstet', '{n} equipped'],
+  'cos.namesFrom': ['Namen aus {source}', 'Names from {source}'],
+  'cos.unlockAll': ['Alle freischalten', 'Unlock all'],
+  'cos.search': ['Cosmetic oder Typ suchen …', 'Search cosmetics or types…'],
+  'cos.searchLabel': ['Cosmetic suchen', 'Search cosmetics'],
+  'cos.type': ['Typ', 'Type'],
+  'cos.allTypes': ['Alle Typen', 'All types'],
+  'cos.shown': ['{n} angezeigt', '{n} shown'],
+  'cos.unlockShown': ['Angezeigte freischalten ({n})', 'Unlock shown ({n})'],
+  'cos.noHits': ['Keine Treffer.', 'No matches.'],
+  'cos.showOn': ['Freigeschaltet', 'Unlocked'],
+  'cos.showOff': ['Gesperrt', 'Locked'],
+  'cos.equipped': ['Ausgerüstet', 'Equipped'],
+  'cos.willUnlock': ['Wird freigeschaltet', 'Will be unlocked'],
+  'cos.willLock': ['Wird gesperrt', 'Will be locked'],
+  'cos.fixed': ['feste Farbe', 'fixed color'],
+  'cos.fixedTitle': ['Eigene Textur, lässt sich vermutlich nicht umfärben', 'Has its own texture; probably cannot be recolored'],
+  'cos.equippedTitle': ['Ausgerüstete Cosmetics bleiben freigeschaltet', 'Equipped cosmetics stay unlocked'],
+  'cos.toUnlock': ['wird freigeschaltet', 'will be unlocked'],
+  'cos.toLock': ['wird gesperrt', 'will be locked'],
+  'cos.asideLabel': ['Änderungen an den Cosmetics', 'Changes to cosmetics'],
+  'cos.noteProfile': ['Cosmetics gelten für alle Spielstände auf diesem PC, nicht pro Spielstand. Ausgerüstete Cosmetics bleiben immer freigeschaltet.',
+    'Cosmetics apply to all saves on this PC, not to a single save. Equipped cosmetics always stay unlocked.'],
+  'cos.noteRarity': ['Die {rarity} kommt aus den Spieldaten (Common bis Ultra Rare). {fixed} markiert Cosmetics mit eigener Textur wie Rusty, Graffiti oder Paint Splats; sie lassen sich vermutlich nicht umfärben.',
+    '{rarity} comes from the game data (Common to Ultra Rare). {fixed} marks cosmetics with their own texture such as Rusty, Graffiti or Paint Splats; they probably cannot be recolored.'],
+  'cos.noteRarityWord': ['Seltenheit', 'Rarity'],
+  'cos.noteFixedWord': ['Feste Farbe', 'Fixed color'],
+  'cos.backups': ['Backups', 'Backups'],
+  'cos.folder': ['Ordner öffnen', 'Open folder'],
+  'cos.noBackups': ['Noch keine Backups.', 'No backups yet.'],
+  'cos.metaBak': ['Spiel · MetaSave.bak', 'Game · MetaSave.bak'],
+  'cos.backupUnlocked': ['{n} freigeschaltet', '{n} unlocked'],
+  'cosCat.Head': ['Kopf', 'Head'],
+  'cosCat.Body': ['Körper', 'Body'],
+  'cosCat.Arms': ['Arme', 'Arms'],
+  'cosCat.Legs': ['Beine', 'Legs'],
+  'cosCat.Other': ['Sonstige', 'Other'],
+
+  // side panel "changes"
+  'aside.label': ['Änderungen', 'Changes'],
+  'aside.title': ['Änderungen', 'Changes'],
+  'aside.nothing': ['Noch nichts geändert.', 'Nothing changed yet.'],
+  'aside.nothingSave': ['Noch nichts geändert. Der Spielstand bleibt unberührt, bis du auf „Änderungen speichern“ klickst.',
+    'Nothing changed yet. The save stays untouched until you click "Save changes".'],
+  'aside.running': ['R.E.P.O. läuft gerade. Schließe das Spiel vor dem Speichern, sonst überschreibt es deine Änderungen womöglich, sobald es das nächste Mal selbst speichert.',
+    'R.E.P.O. is running. Close the game before saving, otherwise it can overwrite your changes the next time it saves.'],
+  'how.title': ['So wird gespeichert', 'How saving works'],
+  'how.1': ['Sichern', 'Back up'],
+  'how.1.on': ['Eine Kopie der aktuellen .es3 kommt in den Backup-Ordner.', 'A copy of the current .es3 goes to the backup folder.'],
+  'how.1.off': ['Übersprungen: Das automatische Backup ist ausgeschaltet.', 'Skipped: automatic backup is off.'],
+  'how.2': ['Entschlüsseln und ändern', 'Decrypt and edit'],
+  'how.2.text': ['Nur die geänderten Werte werden angefasst.', 'Only the changed values are touched.'],
+  'how.3': ['Neu verschlüsseln und prüfen', 'Re-encrypt and verify'],
+  'how.3.text': ['AES-128 mit dem Schlüssel des Spiels, danach Test-Entschlüsselung.', 'AES-128 with the game\'s key, then a test decryption.'],
+  'how.4': ['Zurück in den Spielstand-Ordner', 'Back into the save folder'],
+  'how.4.text': ['Gleicher Dateiname wie vorher.', 'Same file name as before.'],
+  'how.close': ['Schließe R.E.P.O. vor dem Speichern.', 'Close R.E.P.O. before saving.'],
+
+  // changes list
+  'diff.team': ['Teamname', 'Team name'],
+  'diff.purchases': ['Upgrade-Käufe · {name}', 'Upgrade purchases · {name}'],
+  'diff.missing': ['fehlt', 'missing'],
+  'diff.present': ['vorhanden', 'present'],
+  'diff.crown': ['{name} · Krone', '{name} · crown'],
+  'diff.batteries': ['Akkus aufladen', 'Charge batteries'],
+  'diff.notFull': ['{n} nicht voll', '{n} not full'],
+  'diff.allFull': ['alle 100 %', 'all at 100%'],
+
+  // dialogs
+  'dlg.write.title': ['Änderungen speichern?', 'Save changes?'],
+  'dlg.write.lead': ['{changes} in „{team}“ gespeichert.', '{changes} will be saved to "{team}".'],
+  'dlg.write.rawLost': ['Deine nicht gespeicherten Änderungen im Expertenmodus gehen dabei verloren.', 'Your unsaved changes in expert mode will be lost.'],
+  'dlg.backedUpTo': ['Vorher gesichert nach', 'Backed up first to'],
+  'dlg.target': ['Ziel', 'Target'],
+  'dlg.noBackup': ['Automatisches Backup ist aus. Vor dem Speichern wird nichts gesichert.', 'Automatic backup is off. Nothing is backed up before saving.'],
+  'dlg.running': ['R.E.P.O. läuft gerade. Schließe das Spiel und versuche es erneut.', 'R.E.P.O. is running. Close the game and try again.'],
+  'dlg.unknown': ['Ob R.E.P.O. läuft, ließ sich gerade nicht prüfen. Sicherheitshalber ist Speichern gesperrt, bis die Prüfung wieder klappt.', 'Could not check whether R.E.P.O. is running. To be safe, saving is blocked until the check works again.'],
+  'dlg.restore.title': ['Backup wiederherstellen?', 'Restore backup?'],
+  'dlg.restore.lead': ['Der aktuelle Spielstand wird durch dieses Backup ersetzt. Vorher wird er gesichert.', 'The current save is replaced by this backup. It is backed up first.'],
+  'dlg.backup': ['Backup', 'Backup'],
+  'dlg.state': ['Stand', 'Contents'],
+  'dlg.lost': ['Deine nicht gespeicherten Änderungen gehen dabei verloren.', 'Your unsaved changes will be lost.'],
+  'dlg.compare.title': ['Backup vergleichen', 'Compare backup'],
+  'dlg.compare.lead': ['{file} → aktueller Spielstand im Spielstand-Ordner', '{file} → current save in the save folder'],
+  'dlg.compare.loading': ['Wird verglichen …', 'Comparing…'],
+  'dlg.compare.count': ['{diffs} (links Backup, rechts aktuell)', '{diffs} (backup on the left, current on the right)'],
+  'dlg.compare.none': ['Keine Unterschiede in den Werten, die der Editor kennt.', 'No differences in the values the editor knows about.'],
+  'dlg.dup.title': ['Spielstand kopieren', 'Duplicate save'],
+  'dlg.dup.lead': ['Legt einen neuen Spielstand-Slot mit allen Werten von „{team}“ an. Das Original bleibt unverändert.', 'Creates a new save slot with all values of "{team}". The original stays unchanged.'],
+  'dlg.dup.name': ['Teamname der Kopie', 'Team name of the copy'],
+  'dlg.dup.default': ['{team} (Kopie)', '{team} (copy)'],
+  'dlg.dup.fallback': ['Spielstand', 'Save game'],
+  'dlg.dup.lost': [['Kopiert wird der gespeicherte Stand, danach wird die Kopie geöffnet. Deine {n} nicht gespeicherte Änderung geht dabei verloren.',
+    'Kopiert wird der gespeicherte Stand, danach wird die Kopie geöffnet. Deine {n} nicht gespeicherten Änderungen gehen dabei verloren.'],
+  ['The last saved version is copied, then the copy is opened. Your {n} unsaved change will be lost.',
+    'The last saved version is copied, then the copy is opened. Your {n} unsaved changes will be lost.']],
+  'dlg.prof.title': ['Als Profil speichern', 'Save as profile'],
+  'dlg.prof.lead': ['Speichert Werte aus „{team}“, um sie später auf beliebige Spielstände anzuwenden.', 'Saves values from "{team}" to apply them to any save later.'],
+  'dlg.prof.name': ['Name', 'Name'],
+  'dlg.prof.default': ['{team} – Profil', '{team} – profile'],
+  'dlg.prof.run': ['Run-Werte', 'Run values'],
+  'dlg.prof.runDesc': ['Level, Geld, Leben, Ladestation, Ladestation gesamt, Gesamtbeute', 'Level, money, lives, charging station, charging station total, total haul'],
+  'dlg.prof.up': ['Upgrades', 'Upgrades'],
+  'dlg.prof.upDesc': ['Die Stufen von {name}, angewendet auf alle Spieler', 'The levels of {name}, applied to all players'],
+  'dlg.prof.inv': ['Items im Truck', 'Items in the truck'],
+  'dlg.prof.invDesc': ['Alle Items im Truck mit ihrer Anzahl', 'All items in the truck with their count'],
+  'dlg.prof.save': ['Profil speichern', 'Save profile'],
+  'dlg.raw.title': ['Rohdaten speichern?', 'Save raw data?'],
+  'dlg.raw.lead': ['Der Spielstand wird vollständig durch den bearbeiteten JSON-Text ersetzt.', 'The save is completely replaced by the edited JSON text.'],
+  'dlg.cos.title': ['Cosmetics speichern?', 'Save cosmetics?'],
+  'dlg.meta.title': ['Cosmetics wiederherstellen?', 'Restore cosmetics?'],
+  'dlg.meta.lead': ['MetaSave.es3 wird durch dieses Backup ersetzt. Vorher wird der aktuelle Stand gesichert.', 'MetaSave.es3 is replaced by this backup. The current version is backed up first.'],
+  'dlg.meta.lost': ['Deine nicht gespeicherten Cosmetic-Änderungen gehen dabei verloren.', 'Your unsaved cosmetic changes will be lost.'],
+  'info.lead': ['Inoffizielles Fan-Tool, nicht mit semiwork verbunden.', 'Unofficial fan tool, not affiliated with semiwork.'],
+  'info.copyright': ['© 2026 {author} · MIT-Lizenz.', '© 2026 {author} · MIT license.'],
+  'info.version': ['Version', 'Version'],
+  'info.build': ['Spiel-Build', 'Game build'],
+  'info.updated': ['aktualisiert {date}', 'updated {date}'],
+  'info.unknown': ['unbekannt', 'unknown'],
+  'info.tested': ['Getestet mit Build', 'Tested with build'],
+  'info.gameDir': ['Spielordner', 'Game folder'],
+  'info.notFound': ['nicht gefunden', 'not found'],
+  'info.saves': ['Spielstand-Ordner', 'Save folder'],
+  'info.metaFile': ['Cosmetic-Datei', 'Cosmetic file'],
+  'info.backups': ['Backup-Ordner', 'Backup folder'],
+  'info.items': ['Item-Liste', 'Item list'],
+  'info.itemsValue': ['{n} Items aus {source}', '{n} items from {source}'],
+  'info.cosmetics': ['Cosmetic-Liste', 'Cosmetic list'],
+  'info.cosmeticsValue': ['{n} Cosmetics aus {source}', '{n} cosmetics from {source}'],
+  'info.updateWarn': ['R.E.P.O. wurde seit dem letzten Test aktualisiert. Item- und Cosmetic-Liste liest der Editor automatisch neu ein. Hat sich das Spielstand-Format geändert, verweigert er das Lesen, statt etwas kaputt zu machen. Teste nach Updates zuerst an einer Kopie.',
+    'R.E.P.O. has been updated since the last test. The editor re-reads the item and cosmetic lists automatically. If the save format itself changed, it refuses to read saves instead of damaging them. After updates, test with a copy first.'],
+  'info.config': ['Andere Ordner trägst du in {config} ein ({keys}); Änderungen wirken nach einem Neustart des Editors. Schriften: Chakra Petch und IBM Plex, SIL Open Font License.',
+    'Other folders go into {config} ({keys}); changes take effect after restarting the editor. Fonts: Chakra Petch and IBM Plex, SIL Open Font License.'],
+
+  // confirmations and messages
+  'guard.lead': [['{n} nicht gespeicherte Änderung an „{team}“ geht verloren.', '{n} nicht gespeicherte Änderungen an „{team}“ gehen verloren.'],
+    ['{n} unsaved change to "{team}" will be lost.', '{n} unsaved changes to "{team}" will be lost.']],
+  'guard.raw': ['Nicht gespeicherte Änderungen im Expertenmodus gehen verloren.', 'Unsaved changes in expert mode will be lost.'],
+  'guard.discardTitle': ['Änderungen verwerfen?', 'Discard changes?'],
+  'guard.discardSwitch': ['Verwerfen und wechseln', 'Discard and switch'],
+  'guard.reloadTitle': ['Neu laden?', 'Reload?'],
+  'guard.discardReload': ['Verwerfen und neu laden', 'Discard and reload'],
+  'discard.lead': [['{n} nicht gespeicherte Änderung geht verloren.', '{n} nicht gespeicherte Änderungen gehen verloren.'],
+    ['{n} unsaved change will be lost.', '{n} unsaved changes will be lost.']],
+  'cosDiscard.lead': [['{n} Cosmetic-Änderung geht verloren.', '{n} Cosmetic-Änderungen gehen verloren.'],
+    ['{n} cosmetic change will be lost.', '{n} cosmetic changes will be lost.']],
+  'cosReload.lead': ['Deine Cosmetic-Änderungen gehen verloren.', 'Your cosmetic changes will be lost.'],
+  'rawReload.title': ['Rohdaten neu laden?', 'Reload raw data?'],
+  'rawReload.lead': ['Deine Änderungen am JSON-Text gehen verloren.', 'Your changes to the JSON text will be lost.'],
+  'copyAll.title': ['Upgrades übertragen?', 'Copy upgrades?'],
+  'copyAll.lead': ['Alle anderen Spieler bekommen die Upgrade-Stufen von {name}. Ihre bisherigen Stufen werden ersetzt (noch nicht gespeichert).',
+    'All other players get the upgrade levels of {name}. Their current levels are replaced (not saved yet).'],
+  'copyAll.ok': ['Übertragen', 'Copy'],
+  'copyAll.done': ['Upgrades von {name} auf alle Spieler übertragen.', 'Upgrades of {name} copied to all players.'],
+  'profDelete.title': ['Profil löschen?', 'Delete profile?'],
+  'profDelete.lead': ['Das Profil „{name}“ wird endgültig gelöscht.', 'The profile "{name}" will be deleted permanently.'],
+  'msg.failed': ['{what}: {error}', '{what}: {error}'],
+  'msg.backedUp': ['{what}. Vorheriger Stand gesichert als {file}', '{what}. Previous version backed up as {file}'],
+  'msg.noBackup': ['{what} (ohne Backup)', '{what} (without backup)'],
+  'msg.written': ['Gespeichert', 'Saved'],
+  'msg.rawWritten': ['Rohdaten gespeichert', 'Raw data saved'],
+  'msg.cosWritten': ['Cosmetics gespeichert: {n} freigeschaltet', 'Cosmetics saved: {n} unlocked'],
+  'msg.notWritten': ['Nicht gespeichert', 'Not saved'],
+  'msg.restored': ['Wiederhergestellt. Vorheriger Stand gesichert als {file}', 'Restored. Previous version backed up as {file}'],
+  'msg.cosRestored': ['Cosmetics wiederhergestellt. Vorheriger Stand gesichert als {file}', 'Cosmetics restored. Previous version backed up as {file}'],
+  'msg.notRestored': ['Nicht wiederhergestellt', 'Not restored'],
+  'msg.writtenNoRefresh': ['Gespeichert, aber die Ansicht konnte nicht aktualisiert werden: {error}', 'Saved, but the view could not be refreshed: {error}'],
+  'msg.duplicated': ['Kopie „{team}“ angelegt und geöffnet.', 'Copy "{team}" created and opened.'],
+  'msg.dupFailed': ['Kopieren fehlgeschlagen', 'Could not duplicate the save'],
+  'msg.compareFailed': ['Vergleich fehlgeschlagen: {error}', 'Comparison failed: {error}'],
+  'msg.backupsFailed': ['Backups konnten nicht gelesen werden: {error}', 'Could not read backups: {error}'],
+  'msg.rawFailed': ['Rohdaten konnten nicht gelesen werden: {error}', 'Could not read raw data: {error}'],
+  'msg.listUpdated': ['Liste aktualisiert.', 'List refreshed.'],
+  'msg.listMade': [['Liste aktualisiert. Neu gesichert: {n} Datei.', 'Liste aktualisiert. Neu gesichert: {n} Dateien.'],
+    ['List refreshed. Newly backed up: {n} file.', 'List refreshed. Newly backed up: {n} files.']],
+  'msg.listFailed': ['Liste konnte nicht aktualisiert werden: {error}', 'Could not refresh the list: {error}'],
+  'msg.reloaded': ['Neu geladen.', 'Reloaded.'],
+  'msg.folderFailed': ['Ordner konnte nicht geöffnet werden: {error}', 'Could not open the folder: {error}'],
+  'msg.discarded': ['Änderungen verworfen.', 'Changes discarded.'],
+  'msg.backupCreated': ['Backup erstellt: {file}', 'Backup created: {file}'],
+  'msg.backupFailed': ['Backup fehlgeschlagen: {error}', 'Backup failed: {error}'],
+  'msg.profApplied': ['Profil „{name}“ angewendet. Prüfe die Änderungen rechts und speichere sie dann.', 'Profile "{name}" applied. Check the changes on the right, then save them.'],
+  'msg.profDeleted': ['Profil gelöscht.', 'Profile deleted.'],
+  'msg.profDeleteFailed': ['Profil konnte nicht gelöscht werden: {error}', 'Could not delete the profile: {error}'],
+  'msg.profSaved': ['Profil „{name}“ gespeichert.', 'Profile "{name}" saved.'],
+  'msg.profSaveFailed': ['Profil konnte nicht gespeichert werden: {error}', 'Could not save the profile: {error}'],
+  'msg.settingFailed': ['Einstellung gilt nur bis zum Neustart: {error}', 'The setting only applies until the editor restarts: {error}']
+};
+
+// ---------- html templates (auto-escaping) ------------------------------------------------------
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const RAW = Symbol('raw');
+const raw = s => ({ [RAW]: String(s) });  // trusted markup only (our own templates and icons)
+const toHtml = v => (v == null || v === false ? '' : Array.isArray(v) ? v.map(toHtml).join('') : v[RAW] !== undefined ? v[RAW] : esc(v));
+const html = (strings, ...values) => raw(strings.reduce((out, s, i) => out + toHtml(values[i - 1]) + s));
+/** A boolean attribute such as disabled or checked, present only when `on` */
+const attr = (name, on) => (on ? raw(' ' + name) : '');
+/** data-* attributes from an object (values escaped) */
+const dataAttrs = obj => raw(Object.entries(obj || {}).map(([k, v]) => ' data-' + k + '="' + esc(v) + '"').join(''));
+
+// ---------- language ------------------------------------------------------------------------------
+const systemLanguage = () => (String(navigator.language || '').toLowerCase().startsWith('de') ? 'de' : 'en');
+function setLanguage(lang) {
+  S.lang = LANGUAGES.includes(lang) ? lang : 'en';
+  document.documentElement.lang = S.lang;
+}
+const langIndex = () => LANGUAGES.indexOf(S.lang);
+const fill = (text, params) => text.replace(/\{(\w+)\}/g, (all, k) => (params[k] !== undefined ? String(params[k]) : all));
+/** Plain text for `key` in the current language, {placeholders} filled from params. */
+function t(key, params = {}) {
+  const entry = TEXTS[key];
+  return entry ? fill(entry[langIndex()], params) : key; // a missing key shows up instead of breaking the page
+}
+/** Plural text: the one/many form for n, with {n} formatted for the language. */
+function tp(key, n, params = {}) {
+  const forms = TEXTS[key][langIndex()];
+  return fill(forms[n === 1 ? 0 : 1], Object.assign({ n: fmt(n) }, params));
+}
+/** Markup for `key`: the text is escaped, placeholders may be html`` fragments (or plain values). */
+function tx(key, params = {}) {
+  const parts = TEXTS[key][langIndex()].split(/(\{\w+\})/);
+  return raw(parts.map(part => {
+    const m = part.match(/^\{(\w+)\}$/);
+    return m && params[m[1]] !== undefined ? toHtml(params[m[1]]) : esc(part);
+  }).join(''));
+}
+/** Label from the catalog: { de, en } per language, or a plain string (names from the game). */
+const L = v => (v && typeof v === 'object' ? v[S.lang] || v.en : v);
+
+// ---------- formatting -------------------------------------------------------------------------
+const fmt = n => Number(n).toLocaleString(LOCALES[S.lang]);
+const money = n => '$ ' + fmt(n) + ' K';
+const clone = o => JSON.parse(JSON.stringify(o));
+/** Number stored under an own key of a count map (save data may hold keys like "constructor"). */
+const count = (map, key) => (Object.prototype.hasOwnProperty.call(map, key) ? map[key] : 0);
+const clampTo = (n, lo, hi) => Math.max(lo, Math.min(hi, Math.round(n)));
+/** number from an input, or null for empty/invalid input (the old value is kept then) */
+const parseNum = v => (typeof v === 'string' && !v.trim() ? null : Number.isFinite(Number(v)) ? Number(v) : null);
+/** A color (hex or var()) mixed with transparency, for soft backgrounds. */
+const tint = (color, percent) => 'color-mix(in srgb, ' + color + ' ' + percent + '%, transparent)';
+const playTime = s => { const m = Math.round((s || 0) / 60); return Math.floor(m / 60) + ' h ' + (m % 60) + ' min'; };
+/** "2026-01-15" (as the game stores it) in the date format of the language */
+function fmtDate(d) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || '');
+  return m ? new Date(+m[1], m[2] - 1, +m[3]).toLocaleDateString(LOCALES[S.lang], { day: '2-digit', month: '2-digit', year: 'numeric' }) : (d || '');
+}
+const fmtTime = ms => new Date(ms).toLocaleString(LOCALES[S.lang], { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+/** Paths as shown on screen: the user folder appears as %USERPROFILE% (aliases come from the server). */
+function displayPath(p) {
+  if (!p) return p;
+  for (const [from, to] of (S.server && S.server.pathAliases) || []) {
+    const rest = p.slice(from.length);
+    if (p.toLowerCase().startsWith(from.toLowerCase()) && (rest === '' || rest[0] === '\\' || rest[0] === '/')) return to + rest;
+  }
+  return p;
+}
+/** A displayed path that wraps after a backslash rather than inside a folder name (escaped first). */
+const breakable = p => (p ? raw(esc(p).replace(/\\/g, '\\<wbr>')) : p);
+
+// ---------- server ------------------------------------------------------------------------------
+async function api(method, path, body) {
+  let res;
+  try {
+    res = await fetch(path, {
+      method,
+      headers: Object.assign({ 'X-REPO-Editor': TOKEN, 'X-REPO-Lang': S.lang }, body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      body: body !== undefined ? JSON.stringify(body) : undefined
+    });
+  } catch (e) {
+    throw Object.assign(new Error(t('api.offline')), { status: 0 });
+  }
+  let data;
+  try { data = await res.json(); } catch (e) { throw Object.assign(new Error(t('api.badAnswer', { status: res.status })), { status: res.status }); }
+  if (!res.ok) throw Object.assign(new Error(data.error || t('api.error', { status: res.status })), { status: res.status, reason: data.reason });
+  return data;
+}
+const idQuery = id => '?id=' + encodeURIComponent(id);
+
+// ---------- data helpers ------------------------------------------------------------------------
+const C = () => S.server.catalog;
+const COS = () => S.server.cosmetics.list;
+const LIM = () => S.server.limits;
+const catOf = id => C().categories.find(c => c.id === id) || C().categories.find(c => c.id === 'other');
+const cosColor = key => (COS_CATEGORIES.find(c => c[0] === key) || [key, 'var(--dim)'])[1];
+const cosCategoryName = key => t(TEXTS['cosCat.' + key] ? 'cosCat.' + key : 'cosCat.Other');
+const rarityName = r => S.server.cosmetics.rarities[r];
+function itemInfo(key) {
+  return C().items.find(i => i.key === key) || { key, label: key.replace(/^Item /, ''), cat: 'other', max: 1, disabled: false };
+}
+const upgradeInfo = f => C().upgrades.find(u => u.field === f) || { field: f, name: f.replace(/^playerUpgrade/, ''), hint: { de: t('players.unknownUpgrade') } };
+const runField = key => C().run.find(f => f.key === key);
+const playerColor = i => PLAYER_COLORS[i % PLAYER_COLORS.length];
+// Full HP: 100 plus 20 per Health upgrade level (tested in game).
+const maxHp = p => 100 + 20 * (p.up.playerUpgradeHealth || 0);
+const buildChanged = () => S.server.game && S.server.game.build && S.server.game.build !== S.server.game.testedBuild;
+const selPlayer = () => S.edit.players.find(p => p.id === S.playerId) || S.edit.players[0];
+const rawDirty = () => !!(S.raw && S.raw.text !== S.raw.original);
+const knownUnlocked = () => COS().filter(c => S.metaEdit.has(c.id)).length;
+
+// ---------- icons --------------------------------------------------------------------------------
+const svg = (body, size = 16, strokeWidth = 2) => raw('<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + strokeWidth + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + body + '</svg>');
+const I = {
+  box: '<path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5M12 12v10"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  shield: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/>',
+  shieldOk: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
+  undo: '<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>',
+  minus: '<path d="M5 12h14"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  warn: '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>',
+  crown: '<path d="m3 8 4 4 5-7 5 7 4-4-2 11H5z"/>',
+  reload: '<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/>',
+  battery: '<rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2M6 10v4M10 10v4M14 10v4"/>',
+  copy: '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/>',
+  shirt: '<path d="M8 3 3 6l2 5 3-1v11h8V10l3 1 2-5-5-3a4 4 0 0 1-8 0z"/>',
+  lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  unlock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/>',
+  cat: {
+    gun: '<path d="M2 8h17v4H9l-1 6H4l1-6H2z"/><path d="M19 10h3"/><path d="M10 12v2"/>',
+    melee: '<path d="m14 3 7 7-3 3-7-7z"/><path d="M12.5 8.5 3 18l3 3 9.5-9.5"/>',
+    grenade: '<circle cx="12" cy="14" r="7"/><path d="M10 7V4h4v3"/><path d="m14 4 3-2"/>',
+    mine: '<circle cx="12" cy="14" r="6"/><path d="M12 4v4M4.5 7.5 7 10M19.5 7.5 17 10M3 14h3M18 14h3"/>',
+    drone: '<rect x="9" y="9" width="6" height="6" rx="1"/><circle cx="5" cy="5" r="2.5"/><circle cx="19" cy="5" r="2.5"/><circle cx="5" cy="19" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="m7 7 2 2M17 7l-2 2M7 17l2-2M17 17l-2-2"/>',
+    staff: '<circle cx="17" cy="7" r="3.5"/><path d="M14.5 9.5 4 20"/>',
+    heal: '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/>',
+    gear: '<path d="M3 4h2l2.5 11h11L21 7H6.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="18" cy="19" r="1.5"/>',
+    vehicle: '<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17h7l3-9h3M13 17 10 9H7"/>',
+    upgrade: '<circle cx="12" cy="12" r="9"/><path d="M12 16V8M8 12l4-4 4 4"/>',
+    other: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9.5 10a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.5V14M12 17h.01"/>'
+  }
+};
+
+// ---------- building blocks -----------------------------------------------------------------------
+/** Color class for a value: accent when it differs from the loaded save, `base` otherwise. */
+const changedClass = (changed, base = '') => (changed ? 'c-accent' : base);
+const notice = (kind, content) => html`<div class="notice ${kind}">${svg(kind === 'warn' ? I.warn : I.info, 18)}<div>${content}</div></div>`;
+const badge = n => (n ? html`<span class="badge on">${n}</span>` : '');
+
+/** − value + control; `data` identifies what the buttons change */
+function stepper({ act, data, step, label, size = 'sm', icon = 14 }, middle) {
+  const btn = (delta, aria, ico) => html`<button class="step ${size}" data-act="${act}"${dataAttrs(data)} data-add="${delta}" aria-label="${aria}">${svg(ico, icon, 2.4)}</button>`;
+  return html`${btn(-step, t('step.less', { label }), I.minus)}${middle}${btn(step, t('step.more', { label }), I.plus)}`;
+}
+function filterButton({ act, data, active, label, color, count: amount }) {
+  return html`<button class="catbtn" aria-pressed="${active ? 'true' : 'false'}" data-act="${act}"${dataAttrs(data)}>${color ? html`<span class="sq" style="background: ${color}"></span>` : ''}${label}${amount != null ? html` <span class="count">${amount}</span>` : ''}</button>`;
+}
+const filterRow = (id, label, buttons) => html`<div class="hstack" role="group" aria-labelledby="${id}"><span id="${id}" class="small muted rowlabel">${label}</span>${buttons}</div>`;
+const searchBox = (id, key, value, placeholder, label) =>
+  html`<div class="search"><label for="${id}" class="sr">${label}</label><span class="muted">${svg(I.search, 18)}</span><input id="${id}" type="search" data-fk="${key}" data-text="${key}" placeholder="${placeholder}" value="${value}"></div>`;
+const changeRow = (c, undo) => html`<div class="change"><span class="sq" style="background: ${c.dot}"></span>
+  <div class="shrink fill"><div class="lbl text-13">${c.label}</div><div class="val mono small muted">${c.from} → <span class="c-accent">${c.to}</span></div></div>
+  ${undo ? html`<button class="iconbtn"${dataAttrs(undo)} aria-label="${t('change.undo', { label: c.label })}">${svg(I.undo)}</button>` : ''}</div>`;
+function changeList(list, max) {
+  const row = c => html`<div class="change between"><span class="lbl text-13">${c.label}</span>
+    <span class="mono small muted noshrink">${c.from} → <span class="c-accent">${c.to}</span></span></div>`;
+  return html`<div class="vstack gap-6">${list.slice(0, max).map(row)}
+    ${list.length > max ? html`<div class="small muted more">${t('common.more', { n: fmt(list.length - max) })}</div>` : ''}</div>`;
+}
+/** "backed up to … / target …" box of the write and restore dialogs */
+function writeTargets(backupPath, target) {
+  return html`<div class="pathbox">
+    ${S.autoBackup ? html`<div><div class="muted">${t('dlg.backedUpTo')}</div><div class="mono">${breakable(backupPath)}</div></div>` : ''}
+    <div><div class="muted">${t('dlg.target')}</div><div class="mono">${breakable(displayPath(target))}</div></div></div>
+    ${S.autoBackup ? '' : notice('warn', t('dlg.noBackup'))}`;
+}
+/** Saving is possible only when the game is known to be closed (null = could not be checked). */
+const gameBlocked = () => S.server.gameRunning !== false;
+const runningNote = () => (S.server.gameRunning ? notice('warn', t('dlg.running'))
+  : S.server.gameRunning === null ? notice('warn', t('dlg.unknown')) : '');
+
+// ---------- profiles -----------------------------------------------------------------------------
+// Built-in profiles only raise values ("at least"); own profiles set values exactly.
+function builtinProfiles() {
+  const allUp = Object.fromEntries(C().upgrades.map(u => [u.field, 10]));
+  const weapons = Object.fromEntries(C().items.filter(it => !it.disabled && (it.cat === 'gun' || it.cat === 'melee')).map(it => [it.key, 1]));
+  const heal = { 'Item Health Pack Small': 3, 'Item Health Pack Medium': 3, 'Item Health Pack Large': 3, 'Item ReviveItem': 1 };
+  const profile = (id, key, values) => Object.assign({ id, builtin: true, min: true, name: t('prof.' + key + '.name'), desc: t('prof.' + key + '.desc', { money: money(1000) }) }, values);
+  return [
+    profile('b-up10', 'up10', { upgrades: allUp }),
+    profile('b-money', 'money', { run: { currency: 1000, lives: 5 } }),
+    profile('b-arsenal', 'arsenal', { inv: weapons }),
+    profile('b-heal', 'heal', { inv: heal })
+  ];
+}
+
+function profileSummary(p) {
+  const parts = [];
+  if (p.run) parts.push(tp('n.runValue', Object.keys(p.run).length));
+  if (p.upgrades) parts.push(tp('n.upgrade', Object.keys(p.upgrades).length));
+  if (p.inv) parts.push(tp('n.item', Object.keys(p.inv).length));
+  return parts.join(' · ') || t('prof.empty');
+}
+
+function applyProfile(p) {
+  const e = S.edit;
+  const value = (cur, v) => (p.min ? Math.max(cur || 0, v) : v);
+  if (p.run) {
+    for (const f of C().run) {
+      if (p.run[f.key] === undefined || e.run[f.key] === undefined) continue; // only values the save has
+      e.run[f.key] = clampTo(value(e.run[f.key], p.run[f.key]), f.min, f.max);
+    }
+  }
+  if (p.upgrades) {
+    const fields = Object.keys(p.upgrades).filter(f => e.upgradeFields.includes(f));
+    for (const pl of e.players) {
+      for (const f of fields) pl.up[f] = clampTo(value(pl.up[f], p.upgrades[f]), 0, LIM().upgradeLevel);
+    }
+  }
+  if (p.inv) {
+    for (const k of Object.keys(p.inv)) {
+      const v = clampTo(value(count(e.inv, k), p.inv[k]), 0, LIM().itemCount);
+      if (v) e.inv[k] = v; else delete e.inv[k];
+    }
+  }
+}
+
+// ---------- changes ------------------------------------------------------------------------------
+/**
+ * Differences from model a to model b, in display order. Each entry:
+ * { group: 'run'|'players'|'items' (tab badge), pid?, label, from, to, dot (color), undo(e) | null }
+ * undo(e) puts a's value back into the model e.
+ */
+function diffModels(a, b) {
+  const out = [];
+  const add = (group, label, from, to, dot, undo, pid) => out.push({ group, pid, label, from: String(from), to: String(to), dot, undo });
+  const accent = 'var(--accent)';
+  const yesNo = v => t(v ? 'common.yes' : 'common.no');
+
+  if (a.team !== b.team) add('run', t('diff.team'), a.team, b.team, accent, e => { e.team = a.team; });
+  for (const f of C().run) {
+    const av = a.run[f.key], bv = b.run[f.key];
+    if (av === undefined || bv === undefined || av === bv) continue;
+    const show = v => (f.suffix ? money(v) : fmt(v));
+    add('run', L(f.label), show(av), show(bv), accent, e => { e.run[f.key] = av; });
+  }
+  const ua = a.upgradesPurchased || {}, ub = b.upgradesPurchased || {};
+  for (const k of new Set(Object.keys(ua).concat(Object.keys(ub)))) {
+    if (count(ua, k) === count(ub, k)) continue;
+    const label = t('diff.purchases', { name: itemInfo(k).label.replace(/ Upgrade$/, '') });
+    add('run', label, count(ua, k), count(ub, k), UPGRADE_DOT, e => { e.upgradesPurchased[k] = count(ua, k); });
+  }
+
+  b.players.forEach((p, i) => {
+    const o = a.players.find(x => x.id === p.id);
+    const color = playerColor(i);
+    const target = e => e.players.find(x => x.id === p.id);
+    if (!o) { add('players', p.name, t('diff.missing'), t('diff.present'), color, null, p.id); return; }
+    if (o.hp !== p.hp) add('players', p.name + ' · HP', o.hp, p.hp, color, e => { target(e).hp = o.hp; }, p.id);
+    if (o.crown !== p.crown) {
+      // the crown is exclusive: undo restores the holder for all players
+      const undo = e => e.players.forEach(x => { const y = a.players.find(z => z.id === x.id); x.crown = !!(y && y.crown); });
+      add('players', t('diff.crown', { name: p.name }), yesNo(o.crown), yesNo(p.crown), color, undo, p.id);
+    }
+    for (const f of b.upgradeFields) {
+      const ov = o.up[f] || 0, pv = p.up[f] || 0;
+      if (ov !== pv) add('players', p.name + ' · ' + upgradeInfo(f).name, ov, pv, color, e => { target(e).up[f] = ov; }, p.id);
+    }
+  });
+  for (const o of a.players.filter(x => !b.players.some(p => p.id === x.id))) add('players', o.name, t('diff.present'), t('diff.missing'), 'var(--dim)', null, o.id);
+
+  for (const k of new Set(Object.keys(a.inv).concat(Object.keys(b.inv)))) {
+    const av = count(a.inv, k), bv = count(b.inv, k);
+    if (av === bv) continue;
+    const it = itemInfo(k);
+    add('items', it.label, '×' + av, '×' + bv, catOf(it.cat).color, e => { if (av) e.inv[k] = av; else delete e.inv[k]; });
+  }
+  if (b.fillBatteries && !a.fillBatteries) {
+    add('items', t('diff.batteries'), t('diff.notFull', { n: a.batteryLow }), t('diff.allFull'), 'var(--ok)', e => { e.fillBatteries = false; });
+  }
+  return out;
+}
+const changes = () => (S.loaded && S.edit ? diffModels(S.loaded.model, S.edit) : []);
+
+function metaChanges() {
+  if (!S.meta || !S.metaEdit) return [];
+  const before = new Set(S.meta.unlocks), after = S.metaEdit;
+  const out = [];
+  for (const id of after) if (!before.has(id)) out.push({ id, on: true });
+  for (const id of before) if (!after.has(id)) out.push({ id, on: false });
+  return out;
+}
+
+// ---------- rendering ------------------------------------------------------------------------------
+/** Identifies an element across re-renders: data-fk for inputs, all data-* attributes for buttons. */
+function focusKey(el) {
+  if (!el || !el.dataset) return null;
+  if (el.dataset.fk) return 'fk:' + el.dataset.fk;
+  if (el.dataset.act) return 'act:' + JSON.stringify(Object.entries(el.dataset).sort());
+  return null;
+}
+function findByKey(root, key) {
+  if (!key) return null;
+  for (const el of root.querySelectorAll('[data-fk],[data-act]')) if (focusKey(el) === key) return el;
+  return null;
+}
+function safe(fn) { try { return fn(); } catch (e) { return null; } }
+
+let renderedModal = null;
+/** @param {{ committed?: boolean }} [opts] committed: the focused number was just applied, show the stored value */
+function render(opts = {}) {
+  const app = document.getElementById('app');
+  const active = document.activeElement;
+  const key = focusKey(active);
+  const caret = active && 'selectionStart' in active ? [safe(() => active.selectionStart), safe(() => active.selectionEnd)] : null;
+  // a number typed but not yet applied (change event) survives re-renders caused by something else
+  const typed = !opts.committed && active && active.dataset && active.dataset.num ? active.value : null;
+  const scroll = [...document.querySelectorAll('[data-keep-scroll]')].map(el => [el.dataset.keepScroll, el.scrollTop]);
+
+  app.innerHTML = toHtml(S.server ? viewApp() : viewBoot());
+
+  for (const [k, top] of scroll) { const el = app.querySelector('[data-keep-scroll="' + CSS.escape(k) + '"]'); if (el) el.scrollTop = top; }
+  if (S.modal && S.modal !== renderedModal) {
+    // a dialog just opened: move focus into it
+    const dlg = app.querySelector('.dialog');
+    const first = dlg && (dlg.querySelector('input, textarea') || dlg.querySelector('[data-primary]') || dlg.querySelector('button'));
+    if (first) first.focus();
+  } else if (!S.modal && renderedModal) {
+    const back = findByKey(app, S.modalReturn); // dialog closed: back to the button that opened it
+    if (back) back.focus();
+  } else {
+    const el = findByKey(app, key);
+    if (el) {
+      el.focus({ preventScroll: true });
+      if (typed !== null) el.value = typed;
+      if (caret && caret[0] !== null && el.setSelectionRange) safe(() => el.setSelectionRange(caret[0], caret[1]));
+    }
+  }
+  renderedModal = S.modal;
+  renderToast();
+}
+
+function openModal(modal) {
+  S.modalReturn = focusKey(document.activeElement);
+  S.modal = modal;
+}
+/** Generic confirmation; onOk runs after the user agrees. */
+function confirmModal(title, lead, okLabel, onOk) {
+  openModal({ type: 'confirm', title, lead, okLabel, onOk });
+}
+
+function viewBoot() {
+  return html`<div class="empty boot">${S.error || t('boot.loading')}</div>`;
+}
+
+/** Warning when the save password could not be read from the game files (nothing to show otherwise). */
+function viewPasswordNotice() {
+  const pw = S.server.password;
+  if (!pw || pw.found || !TEXTS['pw.' + pw.reason]) return ''; // 'noProbe': no encrypted file, nothing to open yet
+  const text = tx('pw.missing', {
+    reason: t('pw.' + pw.reason),
+    config: html`<span class="mono">${displayPath(S.server.configFile) || 'config.json'}</span>`,
+    key: html`<span class="mono">"gameDir"</span>`
+  });
+  return html`<div class="body notice-only"><div class="content">${notice('warn', text)}</div></div>`;
+}
+
+function viewApp() {
+  const chg = changes();
+  const main = html`${viewPasswordNotice()}${S.view === 'cosmetics' ? viewCosmetics() : (S.edit ? viewSave(chg) : viewNoSave())}`;
+  // while a dialog is open, everything behind it is inert (no focus, no clicks)
+  const inert = attr('inert', S.modal);
+  return html`${viewTopbar(inert)}<div class="layout"${inert}>${viewSidebar(chg)}<main class="main">${main}</main></div>${viewModal(chg)}`;
+}
+
+/** DE | EN switch in the top bar */
+function viewLanguage() {
+  const button = l => html`<button data-act="lang" data-lang="${l}" lang="${l}" aria-pressed="${S.lang === l ? 'true' : 'false'}">${l.toUpperCase()}</button>`;
+  return html`<div class="langswitch" role="group" aria-label="${t('top.language')}">${LANGUAGES.map(button)}</div>`;
+}
+
+function viewTopbar(inert) {
+  const st = S.server;
+  return html`<header class="topbar"${inert}>
+    <div class="brand"><div class="logo">${svg(I.box, 22)}</div><div><div class="brand-name">REPO SAVE EDITOR</div><div class="small muted">${t('top.subtitle')}</div></div></div>
+    <div class="top-right">
+      ${st.gameRunning === false
+        ? html`<div class="pill info"><span class="dot"></span>${t('top.closed')}</div>`
+        : html`<div class="pill warn"><span class="dot"></span>${t(st.gameRunning ? 'top.running' : 'top.unknown')}</div>`}
+      ${buildChanged() ? html`<button class="pill warn" data-act="info" data-where="update">${svg(I.warn, 14)}${t('top.update')}</button>` : ''}
+      <div class="pathchip" title="${displayPath(st.savesDir)}">${svg(I.folder)}<span>${displayPath(st.savesDir)}</span></div>
+      <button class="btn sm" data-act="open-folder" data-what="saves">${t('btn.openSaves')}</button>
+      ${viewLanguage()}
+      <button class="btn sm ghost" data-act="info">${svg(I.info)}${t('top.info')}</button>
+    </div></header>`;
+}
+
+function viewSidebar(chg) {
+  const n = chg.length;
+  const saves = S.saves.map(s => {
+    const open = s.id === S.saveId;
+    const active = open && S.view === 'save';
+    const status = open ? (n ? tp('n.unsaved', n) : t('side.opened')) : (s.ok ? '' : t('side.error', { error: s.error }));
+    const line = s.ok ? tp('n.player', s.players.length) + ' · ' + fmtDate(s.date) + ' · ' + playTime(s.timePlayed) : s.id;
+    return html`<button class="savebtn${active ? ' active' : ''}" data-act="select-save" data-id="${s.id}" aria-current="${active ? 'true' : 'false'}">
+      <span class="row"><span class="strong wrap">${s.ok ? s.team || s.id : s.id}</span>${s.ok && s.level != null ? html`<span class="lvl">LVL ${s.level}</span>` : ''}</span>
+      <span class="small muted">${line}</span>
+      ${status ? html`<span class="small ${open ? (n ? 'c-accent' : 'c-info') : 'c-bad'}">${status}</span>` : ''}</button>`;
+  });
+  const mc = metaChanges().length;
+  const cosText = S.meta ? t('side.cosUnlocked', { n: fmt(knownUnlocked()), total: fmt(COS().length) }) : (S.metaError ? t('side.cosUnavailable') : t('common.loading'));
+  const sel = S.saves.find(s => s.id === S.saveId);
+  return html`<aside class="sidebar" aria-label="${t('side.saves')}">
+    <button class="savebtn${S.view === 'cosmetics' ? ' active' : ''}" data-act="view-cosmetics" aria-current="${S.view === 'cosmetics' ? 'true' : 'false'}">
+      <span class="row"><span class="strong hstack">${svg(I.shirt)}Cosmetics</span><span class="lvl">GLOBAL</span></span>
+      <span class="small muted">${cosText}</span>
+      ${mc ? html`<span class="small c-accent">${tp('n.unsaved', mc)}</span>` : ''}</button>
+    <div class="vstack">
+      <div class="between inset"><h2 class="caps small muted">${t('side.saves')}</h2><div class="small dim">${t('side.found', { n: S.saves.length })}</div></div>
+      ${saves.length ? saves : html`<div class="empty">${t('side.none')}</div>`}
+      <button class="btn sm ghost" data-act="reload-saves">${svg(I.reload, 14)}${t('side.refresh')}</button>
+    </div>
+    <div class="card vstack gap-12">
+      <h2 class="caps small muted hstack">${svg(I.shieldOk)}${t('side.backups')}</h2>
+      <label class="option">
+        <input type="checkbox" data-fk="autobackup" data-check="autobackup"${attr('checked', S.autoBackup)}><span>${t('side.autoBackup')}</span></label>
+      <div class="small muted">${tx('side.originalNote', { file: html`<span class="mono">…_original.es3</span>` })}</div>
+      <div><div class="small muted">${t('side.backupDir')}</div><div class="mono small wrap c-soft">${breakable(displayPath(S.server.backupDir))}</div></div>
+      ${sel ? html`<div class="small muted">${tp('n.editorBackup', sel.editorBackups)} · ${tp('n.gameBackup', sel.gameBackups)}</div>` : ''}
+      <button class="btn sm" data-act="open-folder" data-what="backups">${svg(I.folder, 14)}${t('btn.openBackups')}</button>
+    </div>
+  </aside>`;
+}
+
+function viewNoSave() {
+  if (!S.server.savesDirExists) {
+    const text = tx('nosave.dirMissing', {
+      path: html`<br><span class="mono">${breakable(displayPath(S.server.savesDir))}</span><br>`,
+      config: html`<span class="mono">${displayPath(S.server.configFile) || 'config.json'}</span>`,
+      key: html`<span class="mono">"savesDir"</span>`
+    });
+    return html`<div class="body"><div class="content">${notice('warn', text)}</div></div>`;
+  }
+  const text = S.error || (S.saves.length ? t('nosave.loading') : t('nosave.none'));
+  return html`<div class="body"><div class="content"><div class="empty">${text}</div></div></div>`;
+}
+
+function viewSave(chg) {
+  const m = S.edit, info = S.loaded.info;
+  const counts = { run: 0, players: 0, items: 0 };
+  chg.forEach(c => { counts[c.group]++; });
+  const tabs = ['run', 'players', 'items', 'profiles', 'backups', 'raw'];
+  const n = chg.length;
+  const view = { players: viewPlayers, items: viewItems, profiles: viewProfiles, backups: viewBackups, raw: viewRaw }[S.tab] || viewRun;
+  return html`<section class="savehead">
+    <div class="headrow"><div class="shrink">
+      <div class="mono small dim wrap">${t('save.fileLine', { file: S.saveId + '.es3' })}${info.saveVersion != null ? ' · saveVersion ' + info.saveVersion : ''}</div>
+      <h1>${m.team || S.saveId}</h1>
+      <div class="meta">
+        ${m.run.level !== undefined ? html`<span>Level <strong>${fmt(m.run.level)}</strong></span>` : ''}
+        ${m.run.currency !== undefined ? html`<span>${t('save.money')} <strong>${money(m.run.currency)}</strong></span>` : ''}
+        ${m.run.lives !== undefined ? html`<span>${t('save.lives')} <strong>${fmt(m.run.lives)}</strong></span>` : ''}
+        <span>${tp('n.player', m.players.length)}</span><span>${t('save.playtime', { time: playTime(info.timePlayed) })}</span>
+        <span>${t('save.lastPlayed', { date: fmtDate(info.date) })}</span>
+      </div></div>
+      <div class="actions">
+        <button class="btn" data-act="open-duplicate"${attr('disabled', S.busy)}>${svg(I.copy)}${t('btn.duplicate')}</button>
+        <button class="btn" data-act="backup-now"${attr('disabled', S.busy)}>${svg(I.shield)}${t('btn.backup')}</button>
+        <button class="btn ghost" data-act="reload-save"${attr('disabled', S.busy)}>${svg(I.reload)}${t('btn.reload')}</button>
+        <button class="btn ghost" data-act="discard"${attr('disabled', !n || S.busy)}>${t('btn.discard')}</button>
+        <button class="btn primary" data-act="open-write"${attr('disabled', !n || S.busy)}>${t('btn.write')}${n ? html` <span class="badge">${n}</span>` : ''}</button>
+      </div></div>
+    <nav class="tabs" aria-label="${t('tab.nav')}">${tabs.map(id => html`<button class="tab" aria-current="${S.tab === id ? 'page' : 'false'}" data-act="tab" data-tab="${id}">${t('tab.' + id)}${badge(counts[id])}</button>`)}</nav>
+  </section>
+  <div class="body"><div class="content">${view(chg)}</div>${viewAside(chg)}</div>`;
+}
+
+function viewRun() {
+  const a = S.loaded.model, m = S.edit;
+  const cards = C().run.filter(f => m.run[f.key] !== undefined).map(f => {
+    const v = m.run[f.key], o = a.run[f.key], changed = v !== o;
+    const label = L(f.label);
+    const input = html`<input class="bignum" type="number" data-fk="run:${f.key}" data-num="run:${f.key}" aria-label="${label}" value="${v}" min="${f.min}" max="${f.max}">`;
+    return html`<div class="card${changed ? ' changed' : ''}">
+      <div class="field-head"><div class="shrink"><h3 class="strong">${label}</h3><div class="key">runStats.${f.key}</div></div>
+        ${changed ? html`<button class="iconbtn accent" data-act="run-reset" data-k="${f.key}" aria-label="${t('run.reset', { label, value: fmt(o) })}">${svg(I.undo)}</button>` : ''}</div>
+      <div class="stepper">${stepper({ act: 'run-add', data: { k: f.key }, step: f.step, label, size: '', icon: 18 }, input)}</div>
+      <div class="foot"><span>${L(f.hint)}</span>
+        <span class="${changedClass(changed, 'dim')}">${changed ? t('common.before', { value: fmt(o) }) : t('common.unchanged')}</span></div>
+      ${f.chips ? html`<div class="chips">${f.chips.map(c => html`<button class="chip" data-act="run-add" data-k="${f.key}" data-add="${c}" aria-label="${label} +${fmt(c)}">+${fmt(c)}</button>`)}</div>` : ''}
+    </div>`;
+  });
+  return html`<div class="card${a.team !== m.team ? ' changed' : ''} hstack teamrow">
+      <div class="vstack shrink gap-6"><label for="team" class="strong">${t('run.team')}</label>
+      <input id="team" class="textin" type="text" maxlength="${LIM().teamName}" data-fk="team" data-text="team" value="${m.team}"></div>
+      <div class="key">teamName</div></div>
+    <div class="grid">${cards}</div>${viewPrices()}`;
+}
+
+function viewPrices() {
+  const a = S.loaded.model, m = S.edit;
+  const keys = Object.keys(m.upgradesPurchased || {});
+  if (!keys.length) return '';
+  const total = keys.reduce((s, k) => s + (m.upgradesPurchased[k] || 0), 0);
+  const rows = keys.map(k => {
+    const v = m.upgradesPurchased[k] || 0, o = a.upgradesPurchased[k] || 0, changed = v !== o;
+    const name = itemInfo(k).label.replace(/ Upgrade$/, '');
+    const middle = html`<span class="pricenum figure ${changedClass(changed)}">${v}</span>`;
+    return html`<div class="pricerow"><span class="shrink"><span class="name">${name}</span>${changed ? html` <span class="small c-accent">${t('common.before', { value: o })}</span>` : ''}</span>
+      <span class="mini">${stepper({ act: 'price-add', data: { key: k }, step: 1, label: t('prices.label', { name }), size: 'xs', icon: 12 }, middle)}</span></div>`;
+  });
+  return html`<div class="card vstack gap-12">
+    <div class="field-head"><div><h3 class="strong">${t('prices.title')}</h3><div class="key">itemsUpgradesPurchased</div></div>
+    <button class="btn sm" data-act="price-reset"${attr('disabled', !total)}>${t('prices.reset')}</button></div>
+    <div class="small muted">${t('prices.note')}</div>
+    <div class="grid prices">${rows}</div></div>`;
+}
+
+function viewPlayers(chg) {
+  const a = S.loaded.model, m = S.edit;
+  const mp = notice('info', t('players.multi'));
+  if (!m.players.length) return html`${mp}<div class="empty">${t('players.none')}</div>`;
+  const p = selPlayer(), o = a.players.find(x => x.id === p.id) || p;
+  const cards = m.players.map((pl, i) => {
+    const sum = m.upgradeFields.reduce((s, f) => s + (pl.up[f] || 0), 0);
+    const on = pl.id === p.id;
+    return html`<button class="pbtn" aria-pressed="${on ? 'true' : 'false'}" data-act="player" data-id="${pl.id}">
+      <span class="avatar" style="background: ${playerColor(i)}" aria-hidden="true">${(pl.name || '?').charAt(0).toUpperCase()}</span>
+      <span class="vstack shrink gap-0"><span class="strong hstack gap-6">${pl.name}
+        ${pl.crown ? html`<span class="c-crown">${svg(I.crown)}<span class="sr">${t('players.hasCrown')}</span></span>` : ''}
+        ${chg.some(c => c.pid === pl.id) ? html`<span class="cdot"></span><span class="sr">${t('players.changed')}</span>` : ''}</span>
+      <span class="small muted">${pl.hp != null ? pl.hp + ' HP · ' : ''}${tp('n.level', sum)}</span></span></button>`;
+  });
+  const hpInput = html`<input class="midnum wide ${changedClass(p.hp !== o.hp)}" type="number" data-fk="hp" data-num="hp" aria-label="${t('players.hp')}" value="${p.hp}">`;
+  const hpBox = p.hp == null ? html`<div class="small muted">${t('players.noHp')}</div>` :
+    html`<div class="vstack gap-6"><div class="small muted">${t('players.hp')} · <span class="mono">playerHealth</span></div>
+      <div class="mini">${stepper({ act: 'hp-add', data: {}, step: 10, label: 'HP' }, hpInput)}
+      <button class="btn sm heal" data-act="hp-full" title="${t('players.healTitle')}">${t('players.heal', { hp: Math.min(maxHp(p), LIM().hp) })}</button></div></div>`;
+  const rows = m.upgradeFields.map(f => {
+    const u = upgradeInfo(f), v = p.up[f] || 0, ov = o.up[f] || 0, changed = v !== ov;
+    // bars: light = kept, accent = added, dark red = removed
+    const pips = Array.from({ length: PIPS }, (_, i) => {
+      const state = i < Math.min(v, ov) ? ' kept' : i < v ? ' added' : i < ov ? ' removed' : '';
+      return html`<span class="pip${state}"></span>`;
+    });
+    const note = changed ? t('common.before', { value: ov }) : (v > PIPS ? t('players.over', { n: v - PIPS, max: PIPS }) : t('players.level', { n: v }));
+    const input = html`<input class="midnum ${changedClass(changed)}" type="number" data-fk="up:${f}" data-num="up:${f}" aria-label="${u.name}" value="${v}">`;
+    // the in-game (English) name, explained in the other UI languages
+    const hint = u.hint && u.hint[S.lang] ? html` <span class="muted plain">· ${u.hint[S.lang]}</span>` : '';
+    return html`<div class="card upcard${changed ? ' changed' : ''}">
+      <div class="between"><div class="shrink"><h3 class="strong">${u.name}${hint}</h3><div class="key">${f}</div></div>
+      <div class="mini">${stepper({ act: 'up-add', data: { f }, step: 1, label: u.name }, input)}</div></div>
+      <div class="pips" aria-hidden="true">${pips}<span class="small note ${changedClass(changed, 'dim')}">${note}</span></div></div>`;
+  });
+  return html`${mp}<div class="players" role="group" aria-label="${t('players.select')}">${cards}</div>
+    <div class="card toolbar"><div class="hstack hpbar">${hpBox}
+      <label class="option crownopt">
+        <input type="checkbox" data-fk="crown" data-check="crown"${attr('checked', p.crown)}><span>${t('players.crown')} <span class="key">playerHasCrown</span></span></label></div>
+      <div class="actions">
+        <button class="btn sm" data-act="all-plus">${t('players.allPlus')}</button>
+        <button class="btn sm" data-act="all-ten">${t('players.allTen')}</button>
+        <button class="btn sm" data-act="copy-all">${t('players.copyAll')}</button>
+      </div></div>
+    <div class="small muted inset">${t('players.steamId', { id: p.id })}</div>
+    <div class="grid up">${rows}</div>`;
+}
+
+function visibleItems() {
+  const m = S.edit, a = S.loaded.model;
+  const list = C().items.filter(it => !it.disabled || m.inv[it.key] || a.inv[it.key]);
+  for (const k of new Set(Object.keys(m.inv).concat(Object.keys(a.inv)))) if (!list.some(it => it.key === k)) list.push(itemInfo(k));
+  return list;
+}
+
+function viewItems() {
+  const a = S.loaded.model, m = S.edit;
+  const all = visibleItems();
+  const q = S.items.q.trim().toLowerCase();
+  const shown = all.filter(it => (S.items.cat === 'all' || it.cat === S.items.cat) && (!q || it.label.toLowerCase().includes(q) || it.key.toLowerCase().includes(q)));
+  const owned = all.filter(it => (m.inv[it.key] || 0) > 0);
+  const total = owned.reduce((s, it) => s + m.inv[it.key], 0);
+  const truck = owned.map(it => {
+    const changed = count(m.inv, it.key) !== count(a.inv, it.key);
+    return html`<span class="truckchip${changed ? ' changed' : ''}"><span class="sq" style="background: ${catOf(it.cat).color}"></span>
+      ${it.label} <strong class="figure">×${m.inv[it.key]}</strong></span>`;
+  });
+  const cats = [{ id: 'all', label: t('filter.all') }].concat(C().categories).map(c => {
+    const n = c.id === 'all' ? all.length : all.filter(it => it.cat === c.id).length;
+    return n ? filterButton({ act: 'item-cat', data: { cat: c.id }, active: S.items.cat === c.id, label: L(c.label), color: c.color, count: n }) : '';
+  });
+  const cards = shown.map(it => {
+    const cat = catOf(it.cat), v = m.inv[it.key] || 0, o = a.inv[it.key] || 0, changed = v !== o;
+    const over = v > (it.max || 1);
+    const note = changed ? t('items.before', { n: o }) : (over ? t('items.overLimit', { max: it.max }) : t('items.inTruck'));
+    const middle = html`<span class="countmid"><span class="figure count">×${v}</span>
+      <span class="note ${changedClass(changed || over, 'dim')}">${note}</span></span>`;
+    const control = v === 0
+      ? html`<button class="addbtn" data-act="inv-add" data-key="${it.key}" data-add="1" aria-label="${t('items.add', { label: it.label })}">${svg(I.plus, 14, 2.4)}${t('items.addButton')}</button>`
+      : html`<div class="countbar">${stepper({ act: 'inv-add', data: { key: it.key }, step: 1, label: it.label }, middle)}</div>`;
+    const disabled = it.disabled ? html` <span class="tag bad">${t('items.disabled')}</span>` : '';
+    return html`<div class="itemcard${v ? ' owned' : ''}${changed ? ' changed' : ''}">
+      <div class="itemtop"><div class="itemicon" style="background: ${tint(cat.color, 16)}; color: ${cat.color}">${svg(I.cat[it.cat] || I.cat.other, 22)}</div>
+      <div class="shrink"><div class="strong">${it.label}${disabled}</div><div class="itemkey" title="${it.key}">${it.key}</div></div></div>
+      ${control}</div>`;
+  });
+  const batt = a.batteryLow > 0
+    ? html`<div class="card between battery${m.fillBatteries ? ' changed' : ''}">
+      <div class="hstack gap-12"><span class="c-ok">${svg(I.battery, 22)}</span>
+        <div><h3 class="strong">${t('items.batteries')}</h3><div class="small muted">${t('items.batteriesLow', { items: tp('n.item', a.batteryLow) })} · <span class="mono">itemStatBattery</span></div></div></div>
+      <button class="btn sm${m.fillBatteries ? ' primary' : ''}" data-act="fill-batt" aria-pressed="${m.fillBatteries ? 'true' : 'false'}">${t('items.charge')}</button></div>`
+    : '';
+  const truckCount = t('items.truckCount', { items: tp('n.item', total), kinds: tp('n.kind', owned.length) });
+  return html`<div class="card vstack gap-12">
+      <div class="between truckhead"><h2 class="caps">${t('items.truck')}</h2>
+        <div class="small muted">${truckCount} · <span class="mono">itemsPurchased</span></div></div>
+      <div class="hstack">${truck.length ? truck : html`<span class="muted">${t('items.truckEmpty')}</span>`}</div></div>
+    ${batt}
+    <div class="hstack gap-12">${searchBox('item-search', 'item-search', S.items.q, t('items.search'), t('items.searchLabel'))}
+      <div class="small muted">${t('items.shown', { n: shown.length, total: all.length })}</div></div>
+    ${filterRow('item-cat-label', t('filter.category'), cats)}
+    ${shown.length ? html`<div class="grid items">${cards}</div>` : html`<div class="empty">${t('items.noHits')}</div>`}
+    <div class="small muted">${t('items.note')}</div>`;
+}
+
+function viewProfiles() {
+  const card = (p, own) => html`<div class="card vstack">
+    <div class="field-head"><h3 class="strong">${p.name}</h3>
+    <span class="tag ${own ? 'accent' : 'info'}">${t(own ? 'prof.own' : 'prof.builtin')}</span></div>
+    <div class="small muted">${p.desc || profileSummary(p)}</div>
+    <div class="small dim">${t(p.min ? 'prof.min' : 'prof.exact')}</div>
+    <div class="actions"><button class="btn sm primary" data-act="profile-apply" data-pid="${p.id}">${t('prof.apply')}</button>
+    ${own ? html`<button class="btn sm danger" data-act="profile-delete" data-pid="${p.id}">${t('prof.delete')}</button>` : ''}</div></div>`;
+  return html`${notice('info', t('prof.note'))}
+    <h2 class="caps">${t('prof.builtinTitle')}</h2>
+    <div class="grid profiles">${builtinProfiles().map(p => card(p, false))}</div>
+    <div class="between"><h2 class="caps">${t('prof.ownTitle')}</h2><button class="btn sm" data-act="profile-new">${svg(I.plus, 14)}${t('prof.saveCurrent')}</button></div>
+    ${S.profiles.length ? html`<div class="grid profiles">${S.profiles.map(p => card(p, true))}</div>` : html`<div class="empty">${t('prof.noneOwn')}</div>`}`;
+}
+
+// Editor backups are named <time>_<reason>.es3; the server sends its reasons (REASON in lib/server.js)
+// as { original: 'original', beforeSave: 'before-save', … }, and the keys name the texts.
+const reasonKey = reason => Object.keys(S.server.backupReasons).find(k => S.server.backupReasons[k] === reason);
+const backupLabel = b => (b.source === 'game' ? t('backup.game', { name: (b.file.match(/BACKUP\d+/) || [''])[0] })
+  : reasonKey(b.reason) ? t('backup.' + reasonKey(b.reason)) : t('backup.editor'));
+/** Shorter label for the cosmetics side panel, where every backup is the editor's or MetaSave.bak. */
+const backupShortLabel = b => (b.source === 'game' ? t('cos.metaBak')
+  : reasonKey(b.reason) ? t('backupShort.' + reasonKey(b.reason)) : t('backup.editor'));
+/** File name of the backup the next save will create, as shown in the dialogs. */
+const nextBackupName = () => t('date.placeholder') + '_' + S.server.backupReasons.beforeSave + '.es3';
+
+function viewBackups() {
+  if (!S.backups) return html`<div class="empty">${t('backups.loading')}</div>`;
+  const rows = S.backups.map((b, i) => {
+    const disabled = attr('disabled', !b.ok);
+    return html`<div class="trow" role="row"><div role="cell">${fmtTime(b.mtime)}</div><div role="cell"><span class="tag ${b.source === 'game' ? 'info' : 'accent'}">${backupLabel(b)}</span></div>
+      <div role="cell" class="mono small file" title="${b.file}">${b.file}</div>
+      <div role="cell" class="caps-num">${b.ok && b.level != null ? b.level : '–'}</div>
+      <div role="cell">${b.ok ? (b.currency != null ? money(b.currency) : '–') : html`<span class="c-bad">${t('backups.broken')}</span>`}</div>
+      <div role="cell" class="acts">
+        <button class="btn sm" data-act="compare" data-i="${i}"${disabled} aria-label="${t('backups.compareLabel', { file: b.file })}">${t('backups.compare')}</button>
+        <button class="btn sm" data-act="restore" data-i="${i}"${disabled} aria-label="${t('backups.restoreLabel', { file: b.file })}">${t('btn.restore')}</button>
+      </div></div>`;
+  });
+  const intro = t('backups.intro', { when: t(S.autoBackup ? 'backups.whenOn' : 'backups.whenOff') });
+  const heads = ['date', 'source', 'file', 'level', 'money'].map(h => html`<div role="columnheader">${t('backups.' + h)}</div>`);
+  return html`${notice('info', intro)}
+    <div class="actions">
+      <button class="btn sm" data-act="backup-now" data-where="tab">${svg(I.shield, 14)}${t('btn.backup')}</button>
+      <button class="btn sm" data-act="open-folder" data-what="backups" data-scope="save">${svg(I.folder, 14)}${t('btn.openBackups')}</button>
+      <button class="btn sm" data-act="open-folder" data-what="saves" data-scope="save">${svg(I.folder, 14)}${t('btn.openSaves')}</button>
+    </div>
+    <div class="table" role="table" aria-label="${t('tab.backups')}">
+    <div class="trow head" role="row">${heads}<div role="columnheader"><span class="sr">${t('backups.actions')}</span></div></div>
+    ${rows.length ? rows : html`<div class="trow" role="row"><div class="muted" role="cell">${t('backups.none')}</div></div>`}</div>`;
+}
+
+function rawState() {
+  if (!S.raw) return { ok: false, msg: t('common.loading') };
+  try { JSON.parse(S.raw.text); } catch (e) { return { ok: false, msg: t('raw.invalid', { error: e.message }) }; }
+  if (S.raw.text === S.raw.original) return { ok: true, changed: false, msg: t('raw.valid') };
+  return { ok: true, changed: true, msg: t('raw.validChanged') };
+}
+const rawButtonDisabled = () => { const r = rawState(); return !r.ok || !r.changed || changes().length > 0 || S.busy; };
+
+function viewRaw(chg) {
+  if (!S.raw) return html`<div class="empty">${t('raw.loading')}</div>`;
+  const r = rawState();
+  return html`${notice('warn', t('raw.warning'))}
+    ${chg.length ? notice('info', t('raw.pending', { changes: tp('n.change', chg.length) })) : ''}
+    <div class="actions rawbar"><button class="btn sm" data-act="raw-reload">${svg(I.reload, 14)}${t('btn.reload')}</button>
+    <button class="btn sm primary" data-act="raw-write" id="raw-write"${attr('disabled', rawButtonDisabled())}>${t('raw.write')}</button>
+    <span id="raw-status" class="small ${r.ok ? (r.changed ? 'c-accent' : 'c-ok') : 'c-bad'}">${r.msg}</span></div>
+    <label for="rawbox" class="sr">${t('raw.label')}</label><textarea id="rawbox" class="rawbox" spellcheck="false" data-fk="raw" data-raw="1" data-keep-scroll="raw">${S.raw.text}</textarea>`;
+}
+
+/** Current cosmetic filters; the status filter (unlocked/locked) can be left out for bulk actions. */
+function cosFilter(ignoreStatus) {
+  const f = S.cos, q = f.q.trim().toLowerCase(), on = S.metaEdit;
+  return c => (f.cat === 'all' || c.category === f.cat) && (!f.type || c.type === f.type) &&
+    (f.rarity === 'all' || c.rarity === f.rarity) &&
+    (!q || c.name.toLowerCase().includes(q) || c.type.toLowerCase().includes(q)) &&
+    (ignoreStatus || f.show === 'all' || (f.show === 'on' && on.has(c.id)) || (f.show === 'off' && !on.has(c.id)));
+}
+
+function viewCosmetics() {
+  if (S.metaError) return html`<div class="body"><div class="content">${notice('warn', t('cos.unavailable', { error: S.metaError }))}</div></div>`;
+  if (!S.meta) return html`<div class="body"><div class="content"><div class="empty">${t('cos.loading')}</div></div></div>`;
+  const list = COS();
+  const on = S.metaEdit, before = new Set(S.meta.unlocks), equipped = new Set(S.meta.equipped);
+  const mc = metaChanges();
+  const f = S.cos;
+  const inCat = list.filter(c => f.cat === 'all' || c.category === f.cat);
+  const shown = list.filter(cosFilter(false));
+  const ratio = pool => pool.filter(x => on.has(x.id)).length + '/' + pool.length;
+  const cats = [['all', null]].concat(COS_CATEGORIES).map(([key, color]) => {
+    const pool = key === 'all' ? list : list.filter(x => x.category === key);
+    const label = key === 'all' ? t('filter.all') : cosCategoryName(key);
+    return filterButton({ act: 'cos-cat', data: { cat: key }, active: f.cat === key, label, color, count: ratio(pool) });
+  });
+  const rarities = list.some(c => c.rarity != null) ? ['all', 0, 1, 2, 3].map(r => {
+    const pool = inCat.filter(x => r === 'all' || x.rarity === r);
+    const label = r === 'all' ? t('filter.all') : rarityName(r);
+    return filterButton({ act: 'cos-rarity', data: { rarity: r }, active: f.rarity === r, label, color: r === 'all' ? null : RARITY_COLORS[r], count: ratio(pool) });
+  }) : null;
+  const shows = [['all', 'filter.all'], ['on', 'cos.showOn'], ['off', 'cos.showOff']].map(([k, key]) => filterButton({ act: 'cos-show', data: { show: k }, active: f.show === k, label: t(key) }));
+  const types = [...new Set(inCat.map(c => c.type))].sort();
+  const cards = shown.map(c => {
+    const isOn = on.has(c.id), changed = isOn !== before.has(c.id), eq = equipped.has(c.id);
+    const st = eq ? html`<span class="st c-ok">${svg(I.shirt, 12)}${t('cos.equipped')}</span>`
+      : isOn ? html`<span class="st ${changedClass(changed, 'c-soft')}">${svg(I.unlock, 12)}${t(changed ? 'cos.willUnlock' : 'cos.showOn')}</span>`
+        : html`<span class="st ${changedClass(changed, 'dim')}">${svg(I.lock, 12)}${t(changed ? 'cos.willLock' : 'cos.showOff')}</span>`;
+    const rar = c.rarity != null ? html`<span class="rar" style="color: ${RARITY_COLORS[c.rarity]}; background: ${tint(RARITY_COLORS[c.rarity], 14)}">${rarityName(c.rarity)}</span>` : '';
+    const fixed = c.colorable === false ? html`<span class="rar fixed" title="${t('cos.fixedTitle')}">${t('cos.fixed')}</span>` : '';
+    const lockedTitle = eq ? html` disabled title="${t('cos.equippedTitle')}"` : '';
+    return html`<button class="coscard${isOn ? ' on' : ''}${changed ? ' changed' : ''}" data-act="cos-toggle" data-cid="${c.id}"${lockedTitle} aria-pressed="${isOn ? 'true' : 'false'}">
+      <span class="strong">${c.name}</span>
+      <span class="small muted hstack gap-6"><span class="sq" style="background: ${cosColor(c.category)}"></span>${c.type}</span>
+      ${rar || fixed ? html`<span class="tags">${rar}${fixed}</span>` : ''}${st}</button>`;
+  });
+  const offShown = shown.filter(c => !on.has(c.id)).length;
+  const allOn = list.every(c => on.has(c.id));
+  return html`<section class="savehead">
+    <div class="headrow"><div class="shrink">
+      <div class="mono small dim wrap">${t('cos.fileLine', { file: displayPath(S.meta.file) })}</div>
+      <h1>Cosmetics</h1>
+      <div class="meta">
+        <span>${tx('cos.unlockedOf', { n: html`<strong>${fmt(knownUnlocked())}</strong>`, total: fmt(list.length) })}</span>
+        <span>${t('cos.equippedCount', { n: S.meta.equipped.length })}</span>
+        <span>${tp('n.token', S.meta.tokens)}</span>
+        <span>${t('cos.namesFrom', { source: t('source.' + S.server.cosmetics.source) })}</span>
+      </div>
+    </div><div class="actions">
+      <button class="btn" data-act="cos-all"${attr('disabled', allOn)}>${svg(I.unlock)}${t('cos.unlockAll')}</button>
+      <button class="btn ghost" data-act="cos-reload"${attr('disabled', S.busy)}>${svg(I.reload)}${t('btn.reload')}</button>
+      <button class="btn ghost" data-act="cos-discard"${attr('disabled', !mc.length)}>${t('btn.discard')}</button>
+      <button class="btn primary" data-act="cos-open-write"${attr('disabled', !mc.length || S.busy)}>${t('btn.write')}${mc.length ? html` <span class="badge">${mc.length}</span>` : ''}</button>
+    </div></div></section>
+    <div class="body"><div class="content">
+      <div class="hstack gap-12">${searchBox('cos-search', 'cos-search', f.q, t('cos.search'), t('cos.searchLabel'))}
+        <label class="small muted hstack">${t('cos.type')} <select class="select" data-fk="cos-type" data-sel="cos-type">
+          <option value="">${t('cos.allTypes')}</option>${types.map(ty => html`<option${attr('selected', ty === f.type)}>${ty}</option>`)}</select></label></div>
+      ${filterRow('cos-cat-label', t('filter.category'), cats)}
+      ${rarities ? filterRow('cos-rar-label', t('filter.rarity'), rarities) : ''}
+      ${filterRow('cos-show-label', t('filter.status'), shows)}
+      <div class="between"><div class="small muted">${t('cos.shown', { n: fmt(shown.length) })}</div>
+        <button class="btn sm" data-act="cos-view-on"${attr('disabled', !offShown)}>${t('cos.unlockShown', { n: fmt(offShown) })}</button></div>
+      ${shown.length ? html`<div class="grid cos">${cards}</div>` : html`<div class="empty">${t('cos.noHits')}</div>`}
+    </div>${viewCosAside(mc)}</div>`;
+}
+
+function viewCosAside(mc) {
+  const cos = id => COS().find(c => c.id === id) || { name: '#' + id, type: '' };
+  const items = mc.slice(0, 60).map(c => changeRow(
+    { label: cos(c.id).name, from: cos(c.id).type, to: t(c.on ? 'cos.toUnlock' : 'cos.toLock'), dot: c.on ? 'var(--accent)' : 'var(--removed)' },
+    { act: 'cos-toggle', cid: c.id, where: 'aside' }));
+  const backups = (S.metaBackups || []).slice(0, 8).map((b, i) => html`<div class="change vstack metabackup">
+    <div><div class="text-13">${backupShortLabel(b)}</div>
+    <div class="small muted">${fmtTime(b.mtime)} · ${b.ok ? t('cos.backupUnlocked', { n: fmt(b.unlocked) }) : t('backups.broken')}</div></div>
+    <button class="btn sm" data-act="meta-restore" data-i="${i}"${attr('disabled', !b.ok)}>${t('btn.restore')}</button></div>`);
+  const strong = key => html`<strong class="strong">${t(key)}</strong>`;
+  return html`<aside class="aside" aria-label="${t('cos.asideLabel')}">
+    <div class="card${mc.length ? ' changed' : ''}"><div class="between"><h2 class="caps">${t('aside.title')}</h2><span class="badge${mc.length ? ' on' : ''}">${mc.length}</span></div>
+      ${mc.length ? html`<div class="changes" data-keep-scroll="cos-changes">${items}${mc.length > 60 ? html`<div class="small muted more">${t('common.more', { n: fmt(mc.length - 60) })}</div>` : ''}</div>
+        <button class="btn primary wide mt-12" data-act="cos-open-write" data-where="aside"${attr('disabled', S.busy)}>${t('btn.write')}</button>`
+        : html`<p class="muted mt-12">${t('aside.nothing')}</p>`}</div>
+    ${notice('info', t('cos.noteProfile'))}
+    ${notice('info', tx('cos.noteRarity', { rarity: strong('cos.noteRarityWord'), fixed: strong('cos.noteFixedWord') }))}
+    <div class="card"><div class="between"><h2 class="caps">${t('cos.backups')}</h2><button class="btn sm ghost" data-act="open-folder" data-what="meta-backups">${svg(I.folder, 14)}${t('cos.folder')}</button></div>
+      <div class="changes">${backups.length ? backups : html`<div class="small muted">${t('cos.noBackups')}</div>`}</div></div>
+  </aside>`;
+}
+
+function viewAside(chg) {
+  const items = chg.map((c, i) => changeRow(c, c.undo ? { act: 'undo', i } : null));
+  const steps = [
+    ['how.1', S.autoBackup ? 'how.1.on' : 'how.1.off'],
+    ['how.2', 'how.2.text'],
+    ['how.3', 'how.3.text'],
+    ['how.4', 'how.4.text']
+  ];
+  return html`<aside class="aside" aria-label="${t('aside.label')}">
+    <div class="card${chg.length ? ' changed' : ''}">
+      <div class="between"><h2 class="caps">${t('aside.title')}</h2><span class="badge${chg.length ? ' on' : ''}">${chg.length}</span></div>
+      ${chg.length ? html`<div class="changes" data-keep-scroll="changes">${items}</div>
+        <button class="btn primary wide mt-12" data-act="open-write" data-where="aside"${attr('disabled', S.busy)}>${t('btn.write')}</button>`
+        : html`<p class="muted mt-12">${t('aside.nothingSave')}</p>`}
+    </div>
+    <div class="card"><h2 class="caps">${t('how.title')}</h2><ol class="steps">
+      ${steps.map(([title, text], i) => html`<li><span class="num">${i + 1}</span>
+        <span><strong class="strong">${t(title)}</strong><br><span class="small muted">${t(text)}</span></span></li>`)}
+    </ol>${S.server.gameRunning ? '' : html`<div class="small dim mt-12">${t('how.close')}</div>`}</div>
+    ${S.server.gameRunning ? notice('warn', t('aside.running')) : ''}
+  </aside>`;
+}
+
+function dialog({ title, lead, body = '', actions, wide = false }) {
+  return html`<div class="overlay" data-act="overlay"><div class="dialog${wide ? ' wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="dlg-title">
+    <div><h2 id="dlg-title">${title}</h2>${lead ? html`<p class="muted mt-6">${lead}</p>` : ''}</div>
+    ${body}<div class="actions end">${actions}</div></div></div>`;
+}
+const cancelButton = () => html`<button class="btn" data-act="close-modal">${t('btn.cancel')}</button>`;
+const confirmButton = (act, label, disabled, danger) => html`<button class="btn ${danger ? 'danger' : 'primary'}" data-act="${act}" data-primary="1"${attr('disabled', disabled)}>${label}</button>`;
+
+function viewModal(chg) {
+  const M = S.modal;
+  if (!M) return '';
+  const st = S.server;
+  const running = gameBlocked();
+  const backupPath = name => displayPath(st.backupDir) + '\\' + name + '\\' + nextBackupName();
+  const backupBox = (state) => html`<div class="pathbox">
+      <div><div class="muted">${t('dlg.backup')}</div><div class="mono">${M.backup.file}</div></div>
+      <div><div class="muted">${t('dlg.state')}</div><div>${state}</div></div>
+    </div>`;
+  const MODALS = {
+    write: () => dialog({
+      title: t('dlg.write.title'),
+      lead: t('dlg.write.lead', { changes: tp('n.changeWill', chg.length), team: S.edit.team }),
+      body: html`${changeList(chg, 8)}${writeTargets(backupPath(S.saveId), S.loaded.file)}${runningNote()}
+        ${rawDirty() ? notice('info', t('dlg.write.rawLost')) : ''}`,
+      actions: html`${cancelButton()}${confirmButton('confirm-write', t(S.busy ? 'btn.writing' : 'btn.writeNow'), running || S.busy)}`
+    }),
+    restore: () => {
+      const b = M.backup;
+      const state = [b.team, 'Level ' + (b.level != null ? b.level : '–'), b.currency != null ? money(b.currency) : '–', fmtTime(b.mtime)].join(' · ');
+      return dialog({
+        title: t('dlg.restore.title'),
+        lead: t('dlg.restore.lead'),
+        body: html`${backupBox(state)}${runningNote()}${chg.length ? notice('warn', t('dlg.lost')) : ''}`,
+        actions: html`${cancelButton()}${confirmButton('confirm-restore', t('btn.restore'), running || S.busy)}`
+      });
+    },
+    compare: () => dialog({
+      title: t('dlg.compare.title'),
+      lead: t('dlg.compare.lead', { file: M.backup.file }),
+      body: M.loading ? html`<div class="empty">${t('dlg.compare.loading')}</div>`
+        : M.diff.length ? html`<div class="small muted">${t('dlg.compare.count', { diffs: tp('n.diff', M.diff.length) })}</div>${changeList(M.diff, 200)}`
+          : html`<div class="empty">${t('dlg.compare.none')}</div>`,
+      actions: html`<button class="btn" data-act="close-modal" data-primary="1">${t('btn.close')}</button>`,
+      wide: true
+    }),
+    duplicate: () => dialog({
+      title: t('dlg.dup.title'),
+      lead: t('dlg.dup.lead', { team: S.loaded.model.team }),
+      body: html`<div class="vstack gap-6">
+          <label for="dup-name" class="strong">${t('dlg.dup.name')}</label>
+          <input id="dup-name" class="textin" maxlength="${LIM().teamName}" data-fk="dup-name" data-text="dup-name" value="${M.team}">
+        </div>
+        ${chg.length ? notice('warn', tp('dlg.dup.lost', chg.length)) : ''}
+        ${runningNote()}`,
+      actions: html`${cancelButton()}${confirmButton('confirm-duplicate', t('btn.duplicate'), S.busy || running || !M.team.trim())}`
+    }),
+    'profile-new': () => {
+      const sp = selPlayer(); // undefined for saves without players
+      const opt = (k, label, desc) => html`<label class="option">
+        <input type="checkbox" data-fk="prof-${k}" data-check="prof-${k}"${attr('checked', M[k])}>
+        <span><strong class="strong">${label}</strong><br><span class="small muted">${desc}</span></span></label>`;
+      return dialog({
+        title: t('dlg.prof.title'),
+        lead: t('dlg.prof.lead', { team: S.edit.team }),
+        body: html`<div class="vstack gap-6">
+            <label for="prof-name" class="strong">${t('dlg.prof.name')}</label>
+            <input id="prof-name" class="textin" maxlength="${LIM().profileName}" data-fk="prof-name" data-text="prof-name" value="${M.name}">
+          </div>
+          <div class="vstack gap-12">
+            ${opt('run', t('dlg.prof.run'), t('dlg.prof.runDesc'))}
+            ${sp ? opt('upgrades', t('dlg.prof.up'), t('dlg.prof.upDesc', { name: sp.name })) : ''}
+            ${opt('inv', t('dlg.prof.inv'), t('dlg.prof.invDesc'))}
+          </div>`,
+        actions: html`${cancelButton()}${confirmButton('confirm-profile', t('dlg.prof.save'), !M.name.trim() || !(M.run || M.upgrades || M.inv))}`
+      });
+    },
+    'raw-write': () => dialog({
+      title: t('dlg.raw.title'),
+      lead: t('dlg.raw.lead'),
+      body: html`${writeTargets(backupPath(S.saveId), S.loaded.file)}${runningNote()}`,
+      actions: html`${cancelButton()}${confirmButton('confirm-raw', t('btn.writeNow'), running || S.busy)}`
+    }),
+    'cos-write': () => {
+      const mc = metaChanges();
+      const plus = mc.filter(c => c.on).length, minus = mc.length - plus;
+      const parts = [];
+      if (plus) parts.push(tp('n.cosUnlock', plus));
+      if (minus) parts.push(tp('n.cosLock', minus));
+      return dialog({
+        title: t('dlg.cos.title'),
+        lead: parts.join(', ') + '.',
+        body: html`${writeTargets(displayPath(st.metaBackupDir) + '\\' + nextBackupName(), S.meta.file)}${runningNote()}`,
+        actions: html`${cancelButton()}${confirmButton('confirm-cos', t('btn.writeNow'), running || S.busy)}`
+      });
+    },
+    'meta-restore': () => dialog({
+      title: t('dlg.meta.title'),
+      lead: t('dlg.meta.lead'),
+      body: html`${backupBox(t('cos.backupUnlocked', { n: fmt(M.backup.unlocked) }) + ' · ' + fmtTime(M.backup.mtime))}
+        ${runningNote()}
+        ${metaChanges().length ? notice('warn', t('dlg.meta.lost')) : ''}`,
+      actions: html`${cancelButton()}${confirmButton('confirm-meta-restore', t('btn.restore'), running || S.busy)}`
+    }),
+    confirm: () => dialog({ title: M.title, lead: M.lead, actions: html`${cancelButton()}${confirmButton('confirm-ok', M.okLabel, false, true)}` }),
+    info: () => {
+      const g = st.game || {};
+      const row = (key, v, mono) => html`<div class="muted">${t(key)}</div><div class="${mono ? 'mono' : ''}">${v}</div>`;
+      const build = g.build ? g.build + (g.updated ? ' · ' + t('info.updated', { date: fmtTime(g.updated) }) : '') : t('info.unknown');
+      const itemCount = C().items.filter(i => !i.disabled).length;
+      const keys = ['savesDir', 'metaFile', 'backupDir', 'gameDir'].map((k, i) => html`${i ? ', ' : ''}<span class="mono">${k}</span>`);
+      return dialog({
+        title: 'REPO Save Editor',
+        lead: t('info.lead') + (st.author ? ' ' + t('info.copyright', { author: st.author }) : ''),
+        body: html`<div class="kv">
+            ${row('info.version', st.appVersion || '–')}
+            ${row('info.build', build)}
+            ${row('info.tested', g.testedBuild || '–')}
+            ${row('info.gameDir', breakable(displayPath(st.gameDir)) || t('info.notFound'), true)}
+            ${row('info.password', t(st.password && st.password.found ? 'info.passwordFound' : 'info.passwordMissing'))}
+            ${row('info.saves', breakable(displayPath(st.savesDir)), true)}
+            ${row('info.metaFile', breakable(displayPath(st.metaFile)), true)}
+            ${row('info.backups', breakable(displayPath(st.backupDir)), true)}
+            ${row('info.items', t('info.itemsValue', { n: itemCount, source: t('source.' + C().source) }))}
+            ${row('info.cosmetics', t('info.cosmeticsValue', { n: COS().length, source: t('source.' + st.cosmetics.source) }))}
+          </div>
+          ${buildChanged() ? notice('warn', t('info.updateWarn')) : ''}
+          <div class="small muted">${tx('info.config', { config: html`<span class="mono">${displayPath(st.configFile) || 'config.json'}</span>`, keys })}</div>`,
+        actions: html`<button class="btn" data-act="close-modal" data-primary="1">${t('btn.close')}</button>`,
+        wide: true
+      });
+    }
+  };
+  return MODALS[M.type] ? MODALS[M.type]() : '';
+}
+
+function renderToast() {
+  const box = document.getElementById('toast');
+  const toastNow = S.toast;
+  box.setAttribute('aria-live', toastNow && toastNow.isError ? 'assertive' : 'polite');
+  box.innerHTML = toastNow ? toHtml(html`<div class="toast${toastNow.isError ? ' error' : ''}"><span>${toastNow.text}</span>
+    ${toastNow.action ? html`<button data-act="toast-action">${toastNow.action.label}</button>` : ''}<button data-act="toast-close" aria-label="${t('toast.close')}">OK</button></div>`) : '';
+}
+
+/** Status message at the bottom. Errors stay until closed; others disappear after a while. */
+let toastTimer = null;
+function toast(text, isError, action) {
+  clearTimeout(toastTimer);
+  S.toast = { text, isError: !!isError, action: action || null };
+  renderToast();
+  if (!isError) toastTimer = setTimeout(() => { S.toast = null; renderToast(); }, TOAST_MS);
+}
+
+// ---------- loading --------------------------------------------------------------------------------
+async function loadSaves() { S.saves = await api('GET', '/api/saves'); }
+
+let openRequest = 0; // ignores answers of older requests when the user clicks quickly
+async function openSave(id) {
+  const req = ++openRequest;
+  S.view = 'save'; S.saveId = id; S.loaded = null; S.edit = null; S.backups = null; S.raw = null; S.error = null;
+  render();
+  try {
+    const loaded = await api('GET', '/api/save' + idQuery(id));
+    if (req !== openRequest) return;
+    S.loaded = loaded;
+    S.edit = clone(loaded.model);
+    if (!S.edit.players.some(p => p.id === S.playerId)) S.playerId = S.edit.players[0] ? S.edit.players[0].id : null;
+    if (S.tab === 'backups') loadBackups();
+    if (S.tab === 'raw') loadRaw();
+  } catch (e) {
+    if (req !== openRequest) return;
+    S.error = t('nosave.failed', { error: e.message });
+  }
+  render();
+}
+
+async function loadBackups() {
+  const id = S.saveId;
+  try {
+    const list = await api('GET', '/api/backups' + idQuery(id));
+    if (id === S.saveId) S.backups = list;
+  } catch (e) { S.backups = []; toast(t('msg.backupsFailed', { error: e.message }), true); }
+  render();
+}
+
+async function loadRaw() {
+  const id = S.saveId;
+  try {
+    const r = await api('GET', '/api/raw' + idQuery(id));
+    if (id === S.saveId) S.raw = { hash: r.hash, text: r.text, original: r.text };
+  } catch (e) { S.raw = null; toast(t('msg.rawFailed', { error: e.message }), true); }
+  render();
+}
+
+async function loadMeta() {
+  try {
+    S.meta = await api('GET', '/api/meta');
+    S.metaEdit = new Set(S.meta.unlocks);
+    S.metaError = null;
+  } catch (e) {
+    S.meta = null; S.metaEdit = null; S.metaError = e.message;
+  }
+  try { S.metaBackups = await api('GET', '/api/meta-backups'); } catch (e) { S.metaBackups = []; }
+}
+
+async function loadProfiles() { try { S.profiles = await api('GET', '/api/profiles'); } catch (e) { S.profiles = []; } }
+async function saveProfiles(list) { S.profiles = await api('POST', '/api/profiles', { profiles: list }); }
+
+// ---------- writing ----------------------------------------------------------------------------------
+/** Runs a write: busy state, dialog closed afterwards, errors as toast (conflicts offer "reload"). */
+async function runWrite(fn, failKey, reload) {
+  S.busy = true; render();
+  let message;
+  try {
+    message = await fn();
+  } catch (e) {
+    S.busy = false; S.modal = null; render();
+    const conflict = e.reason === 'changed'; // the file changed since loading
+    toast(t('msg.failed', { what: t(failKey), error: e.message }), true, conflict ? { label: t('btn.reload'), fn: reload } : null);
+    return;
+  }
+  S.busy = false; S.modal = null;
+  toast(message);
+  try { await reload(); } catch (e) { toast(t('msg.writtenNoRefresh', { error: e.message }), true); }
+  render();
+}
+const reloadSave = async () => {
+  let listError = null;
+  try { await loadSaves(); } catch (e) { listError = e; }
+  await openSave(S.saveId); // always: otherwise the old hash stays and the next save is refused as a conflict
+  if (listError) toast(t('msg.listFailed', { error: listError.message }), true);
+};
+const reloadMeta = async () => { await loadMeta(); };
+/** "Saved. Previous version backed up as …" or "Saved (without backup)" */
+const backupMessage = (r, what) => (r.backup ? t('msg.backedUp', { what, file: r.backup }) : t('msg.noBackup', { what }));
+
+// The hash tells the server which version was loaded; it refuses to write if the file changed since.
+const doWrite = () => runWrite(async () => {
+  const r = await api('POST', '/api/save' + idQuery(S.saveId), { hash: S.loaded.hash, model: S.edit, autoBackup: S.autoBackup });
+  return backupMessage(r, t('msg.written'));
+}, 'msg.notWritten', reloadSave);
+
+const doRaw = () => runWrite(async () => {
+  const r = await api('POST', '/api/raw' + idQuery(S.saveId), { hash: S.raw.hash, text: S.raw.text, autoBackup: S.autoBackup });
+  return backupMessage(r, t('msg.rawWritten'));
+}, 'msg.notWritten', reloadSave);
+
+const doRestore = b => runWrite(async () => {
+  const r = await api('POST', '/api/restore' + idQuery(S.saveId), { source: b.source, file: b.file });
+  return t('msg.restored', { file: r.backup });
+}, 'msg.notRestored', reloadSave);
+
+const doCosWrite = () => runWrite(async () => {
+  const r = await api('POST', '/api/meta', { hash: S.meta.hash, unlocks: [...S.metaEdit], autoBackup: S.autoBackup });
+  return backupMessage(r, t('msg.cosWritten', { n: fmt(r.unlocked) }));
+}, 'msg.notWritten', reloadMeta);
+
+const doMetaRestore = b => runWrite(async () => {
+  const r = await api('POST', '/api/meta-restore', { source: b.source, file: b.file });
+  return t('msg.cosRestored', { file: r.backup });
+}, 'msg.notRestored', reloadMeta);
+
+async function doDuplicate() {
+  const team = S.modal.team.trim();
+  let newId = null;
+  await runWrite(async () => {
+    newId = (await api('POST', '/api/duplicate' + idQuery(S.saveId), { team })).id;
+    return t('msg.duplicated', { team });
+  }, 'msg.dupFailed', async () => { await loadSaves(); if (newId) await openSave(newId); });
+}
+
+async function openCompare(b) {
+  openModal({ type: 'compare', backup: b, loading: true, diff: [] });
+  render();
+  try {
+    const r = await api('GET', '/api/backup-model' + idQuery(S.saveId) + '&source=' + encodeURIComponent(b.source) + '&file=' + encodeURIComponent(b.file));
+    if (S.modal && S.modal.type === 'compare') { S.modal.diff = diffModels(r.model, S.loaded.model); S.modal.loading = false; }
+  } catch (e) { S.modal = null; toast(t('msg.compareFailed', { error: e.message }), true); }
+  render();
+}
+
+/** Asks before discarding unwritten edits (model or expert text), then runs `then`. */
+function guardUnsaved(titleKey, okKey, then) {
+  const n = changes().length;
+  if (!n && !rawDirty()) return then();
+  const lead = n ? tp('guard.lead', n, { team: S.edit.team }) : t('guard.raw');
+  confirmModal(t(titleKey), lead, t(okKey), then);
+}
+
+function editRun(key, fn) {
+  const f = runField(key);
+  S.edit.run[key] = clampTo(fn(S.edit.run[key]), f.min, f.max);
+}
+
+// ---------- actions (data-act) -------------------------------------------------------------------------
+const ACTIONS = {
+  'overlay': () => closeModal(),
+  'close-modal': () => closeModal(),
+  'toast-close': () => { S.toast = null; renderToast(); return NO_RENDER; },
+  'toast-action': () => { const a = S.toast && S.toast.action; S.toast = null; renderToast(); if (a) a.fn().then(render).catch(e => toast(e.message, true)); return NO_RENDER; },
+  'info': () => openModal({ type: 'info' }),
+  'confirm-ok': () => { const fn = S.modal.onOk; S.modal = null; return fn(); },
+
+  // language: stored by the server; lists are fetched again for messages in the new language
+  'lang': async d => {
+    if (d.lang === S.lang) return;
+    setLanguage(d.lang);
+    if (S.toast && !S.toast.isError) S.toast = null; // a passing message in the old language
+    render();
+    try {
+      await api('POST', '/api/settings', { language: S.lang });
+    } catch (e) {
+      toast(t('msg.settingFailed', { error: e.message }), true);
+    }
+    try { await loadSaves(); } catch (e) { /* the list stays as it is */ }
+    if (S.tab === 'backups' && S.backups) await loadBackups();
+  },
+
+  // navigation
+  'view-cosmetics': async () => {
+    S.view = 'cosmetics';
+    if (!metaChanges().length) await loadMeta(); // fresh from disk unless there are pending edits
+  },
+  'select-save': d => {
+    if (d.id === S.saveId) { S.view = 'save'; return; }
+    return guardUnsaved('guard.discardTitle', 'guard.discardSwitch', () => openSave(d.id));
+  },
+  'reload-saves': async () => {
+    try {
+      const r = await api('POST', '/api/rescan', {});
+      S.saves = r.saves;
+      S.server.savesDirExists = r.savesDirExists;
+      S.server.password = r.password;
+      if (S.metaError && r.metaExists) await loadMeta();
+      if (!S.saveId) S.error = null;
+      if (!S.saveId && S.saves.length) await openSave((S.saves.find(x => x.ok) || S.saves[0]).id); // first save appeared
+      toast(r.made.length ? tp('msg.listMade', r.made.length) : t('msg.listUpdated'));
+    } catch (e) { toast(t('msg.listFailed', { error: e.message }), true); }
+  },
+  'reload-save': () => guardUnsaved('guard.reloadTitle', 'guard.discardReload', async () => {
+    await openSave(S.saveId);
+    toast(t('msg.reloaded'));
+  }),
+  'tab': d => {
+    S.tab = d.tab;
+    if (S.tab === 'backups') { S.backups = null; loadBackups(); }
+    if (S.tab === 'raw' && !rawDirty()) { S.raw = null; loadRaw(); }
+  },
+  'open-folder': async d => {
+    // scope "save": the folder of the open save instead of the main folder
+    const query = d.scope === 'save' && S.saveId ? idQuery(S.saveId) : '';
+    try {
+      await api('POST', '/api/open' + query, { what: d.what });
+    } catch (e) {
+      toast(t('msg.folderFailed', { error: e.message }), true);
+    }
+    return NO_RENDER;
+  },
+
+  // run values
+  'run-add': d => editRun(d.k, v => v + Number(d.add)),
+  'run-reset': d => { S.edit.run[d.k] = S.loaded.model.run[d.k]; },
+  'price-add': d => {
+    const counts = S.edit.upgradesPurchased;
+    counts[d.key] = clampTo(count(counts, d.key) + Number(d.add), 0, LIM().purchases);
+  },
+  'price-reset': () => {
+    for (const k of Object.keys(S.edit.upgradesPurchased)) S.edit.upgradesPurchased[k] = 0;
+  },
+
+  // players
+  'player': d => { S.playerId = d.id; },
+  'hp-add': d => {
+    const p = selPlayer();
+    p.hp = clampTo((p.hp || 0) + Number(d.add), 0, LIM().hp);
+  },
+  'hp-full': () => {
+    const p = selPlayer();
+    p.hp = clampTo(maxHp(p), 0, LIM().hp);
+  },
+  'up-add': d => {
+    const p = selPlayer();
+    p.up[d.f] = clampTo((p.up[d.f] || 0) + Number(d.add), 0, LIM().upgradeLevel);
+  },
+  'all-plus': () => {
+    const p = selPlayer();
+    for (const f of S.edit.upgradeFields) p.up[f] = clampTo((p.up[f] || 0) + 1, 0, LIM().upgradeLevel);
+  },
+  'all-ten': () => {
+    const p = selPlayer();
+    for (const f of S.edit.upgradeFields) p.up[f] = Math.max(p.up[f] || 0, 10);
+  },
+  'copy-all': () => {
+    const p = selPlayer();
+    confirmModal(t('copyAll.title'), t('copyAll.lead', { name: p.name }), t('copyAll.ok'), () => {
+      for (const x of S.edit.players) x.up = Object.assign({}, p.up);
+      toast(t('copyAll.done', { name: p.name }));
+    });
+  },
+
+  // items
+  'item-cat': d => { S.items.cat = d.cat; },
+  'inv-add': d => {
+    const v = clampTo(count(S.edit.inv, d.key) + Number(d.add), 0, LIM().itemCount);
+    if (v > 0) S.edit.inv[d.key] = v; else delete S.edit.inv[d.key];
+  },
+  'fill-batt': () => { S.edit.fillBatteries = !S.edit.fillBatteries; },
+
+  // changes and writing
+  'undo': d => {
+    const c = changes()[Number(d.i)]; // same order as the list on screen
+    if (c && c.undo) c.undo(S.edit);
+  },
+  'discard': () => {
+    confirmModal(t('guard.discardTitle'), tp('discard.lead', changes().length), t('btn.discard'), () => {
+      S.edit = clone(S.loaded.model);
+      toast(t('msg.discarded'));
+    });
+  },
+  'open-write': () => openModal({ type: 'write' }),
+  'confirm-write': () => doWrite(),
+  'open-duplicate': () => openModal({ type: 'duplicate', team: t('dlg.dup.default', { team: S.loaded.model.team || t('dlg.dup.fallback') }) }),
+  'confirm-duplicate': () => doDuplicate(),
+
+  // backups
+  'backup-now': async () => {
+    try {
+      const r = await api('POST', '/api/backup' + idQuery(S.saveId), {});
+      await loadSaves();
+      if (S.tab === 'backups') await loadBackups();
+      toast(t('msg.backupCreated', { file: r.backup }));
+    } catch (e) { toast(t('msg.backupFailed', { error: e.message }), true); }
+  },
+  'restore': d => openModal({ type: 'restore', backup: S.backups[Number(d.i)] }),
+  'confirm-restore': () => doRestore(S.modal.backup),
+  'compare': d => { openCompare(S.backups[Number(d.i)]); return NO_RENDER; },
+
+  // profiles
+  'profile-apply': d => {
+    const p = builtinProfiles().concat(S.profiles).find(x => x.id === d.pid);
+    if (!p) return;
+    applyProfile(p);
+    toast(t('msg.profApplied', { name: p.name }));
+  },
+  'profile-delete': d => {
+    const p = S.profiles.find(x => x.id === d.pid);
+    if (!p) return;
+    confirmModal(t('profDelete.title'), t('profDelete.lead', { name: p.name }), t('prof.delete'), async () => {
+      try {
+        await saveProfiles(S.profiles.filter(x => x.id !== d.pid));
+        toast(t('msg.profDeleted'));
+      } catch (e) {
+        toast(t('msg.profDeleteFailed', { error: e.message }), true);
+      }
+    });
+  },
+  'profile-new': () => openModal({ type: 'profile-new', name: t('dlg.prof.default', { team: S.edit.team }), run: true, upgrades: !!selPlayer(), inv: false }),
+  'confirm-profile': async () => {
+    const M = S.modal, e = S.edit;
+    const p = { id: 'p' + Date.now(), name: M.name.trim(), run: null, upgrades: null, inv: null };
+    if (M.run) p.run = Object.assign({}, e.run);
+    if (M.upgrades && selPlayer()) p.upgrades = Object.assign({}, selPlayer().up);
+    if (M.inv) p.inv = Object.assign({}, e.inv);
+    try {
+      await saveProfiles(S.profiles.concat([p]));
+      S.modal = null;
+      toast(t('msg.profSaved', { name: p.name }));
+    } catch (err) {
+      toast(t('msg.profSaveFailed', { error: err.message }), true);
+    }
+  },
+
+  // expert mode
+  'raw-reload': () => {
+    const reload = () => { S.raw = null; loadRaw(); };
+    if (!rawDirty()) return reload();
+    confirmModal(t('rawReload.title'), t('rawReload.lead'), t('btn.reload'), reload);
+  },
+  'raw-write': () => openModal({ type: 'raw-write' }),
+  'confirm-raw': () => doRaw(),
+
+  // cosmetics
+  'cos-cat': d => { S.cos.cat = d.cat; S.cos.type = ''; },
+  'cos-show': d => { S.cos.show = d.show; },
+  'cos-rarity': d => { S.cos.rarity = d.rarity === 'all' ? 'all' : Number(d.rarity); },
+  'cos-toggle': d => {
+    const id = Number(d.cid);
+    if (S.meta.equipped.includes(id)) return;
+    if (S.metaEdit.has(id)) S.metaEdit.delete(id); else S.metaEdit.add(id);
+  },
+  'cos-all': () => { COS().forEach(c => S.metaEdit.add(c.id)); },
+  'cos-view-on': () => { COS().filter(cosFilter(true)).forEach(c => S.metaEdit.add(c.id)); },
+  'cos-discard': () => {
+    confirmModal(t('guard.discardTitle'), tp('cosDiscard.lead', metaChanges().length), t('btn.discard'), () => { S.metaEdit = new Set(S.meta.unlocks); });
+  },
+  'cos-reload': () => {
+    const reload = async () => { await loadMeta(); toast(t('msg.reloaded')); };
+    if (!metaChanges().length) return reload();
+    confirmModal(t('guard.reloadTitle'), t('cosReload.lead'), t('guard.discardReload'), reload);
+  },
+  'cos-open-write': () => openModal({ type: 'cos-write' }),
+  'confirm-cos': () => doCosWrite(),
+  'meta-restore': d => openModal({ type: 'meta-restore', backup: S.metaBackups[Number(d.i)] }),
+  'confirm-meta-restore': () => doMetaRestore(S.modal.backup)
+};
+
+function closeModal() {
+  if (S.busy) return NO_RENDER;
+  S.modal = null;
+}
+
+// A number is applied on its change event, which fires when the input loses focus. If that happens
+// because a button is being pressed, re-rendering now would replace the button and swallow its click.
+// So: while a pointer is down on an action, the click renders; otherwise render after focus has moved.
+let pressedAction = null;
+document.addEventListener('pointerdown', e => { pressedAction = e.target.closest ? e.target.closest('[data-act]') : null; }, true);
+document.addEventListener('pointerup', () => setTimeout(() => {
+  if (pressedAction) { pressedAction = null; render(); } // pressed but no click (pointer moved away)
+}), true);
+
+document.addEventListener('click', async e => {
+  pressedAction = null;
+  const el = e.target.closest('[data-act]');
+  if (!el || el.disabled) return;
+  const act = el.dataset.act;
+  if (act === 'overlay' && e.target !== el) return; // clicks inside the dialog
+  const handler = ACTIONS[act];
+  if (!handler) return;
+  const result = await handler(el.dataset, el);
+  if (result !== NO_RENDER) render();
+});
+
+document.addEventListener('input', e => {
+  const d = e.target.dataset;
+  if (!d) return;
+  if (d.raw) {
+    // expert textarea: update state and the status line only (re-rendering would be slow and jumpy)
+    S.raw.text = e.target.value;
+    const r = rawState();
+    const status = document.getElementById('raw-status');
+    if (status) { status.textContent = r.msg; status.style.color = r.ok ? (r.changed ? 'var(--accent)' : 'var(--ok)') : 'var(--bad)'; }
+    const btn = document.getElementById('raw-write');
+    if (btn) btn.disabled = rawButtonDisabled();
+    return;
+  }
+  const setters = {
+    team: v => { S.edit.team = v; },
+    'item-search': v => { S.items.q = v; },
+    'cos-search': v => { S.cos.q = v; },
+    'dup-name': v => { S.modal.team = v; },
+    'prof-name': v => { S.modal.name = v; }
+  };
+  if (!setters[d.text]) return;
+  setters[d.text](e.target.value);
+  render();
+});
+
+document.addEventListener('change', e => {
+  const d = e.target.dataset;
+  if (!d) return;
+  if (d.check === 'autobackup') {
+    S.autoBackup = e.target.checked;
+    api('POST', '/api/settings', { autoBackup: S.autoBackup })
+      .catch(err => toast(t('msg.settingFailed', { error: err.message }), true));
+  } else if (d.check === 'crown') {
+    const p = selPlayer(), on = e.target.checked;
+    S.edit.players.forEach(x => { x.crown = false; }); // only one player can have the crown
+    p.crown = on;
+  } else if (d.check && d.check.startsWith('prof-')) {
+    S.modal[d.check.slice(5)] = e.target.checked;
+  } else if (d.sel === 'cos-type') {
+    S.cos.type = e.target.value;
+  } else if (d.num) {
+    const [kind, key] = d.num.split(/:(.*)/); // "up:playerUpgradeHealth" -> ["up", "playerUpgradeHealth"]
+    const v = parseNum(e.target.value);
+    if (v !== null) {
+      if (kind === 'run') editRun(key, () => v);
+      if (kind === 'hp') selPlayer().hp = clampTo(v, 0, LIM().hp);
+      if (kind === 'up') selPlayer().up[key] = clampTo(v, 0, LIM().upgradeLevel);
+    }
+    // empty or invalid input shows the previous value again; see pressedAction above for the timing
+    if (!pressedAction) setTimeout(() => render({ committed: true }));
+    return;
+  } else return;
+  render();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && S.modal && !S.busy) { S.modal = null; render(); return; }
+  const d = e.target.dataset || {};
+  if (e.key === 'Enter' && d.num) { e.target.dispatchEvent(new Event('change', { bubbles: true })); return; }
+  if (e.key === 'Enter' && S.modal && e.target.tagName === 'INPUT' && e.target.type === 'text') {
+    const primary = document.querySelector('.dialog [data-primary]');
+    if (primary && !primary.disabled) primary.click(); // Enter confirms text dialogs
+  }
+});
+
+window.addEventListener('beforeunload', e => {
+  if (changes().length || metaChanges().length || rawDirty()) { e.preventDefault(); e.returnValue = ''; }
+});
+
+// Keep the "game running" indicator current.
+setInterval(async () => {
+  if (!S.server || document.hidden) return;
+  try {
+    const r = await api('GET', '/api/status');
+    if (r.gameRunning !== S.server.gameRunning) { S.server.gameRunning = r.gameRunning; render(); }
+  } catch (e) { /* editor stopped */ }
+}, POLL_MS);
+
+(async function init() {
+  setLanguage(systemLanguage()); // until the stored choice is known
+  render();
+  try {
+    if (!TOKEN) throw new Error(t('boot.noToken'));
+    const state = await api('GET', '/api/state');
+    setLanguage(state.settings.language || systemLanguage());
+    S.server = state;
+    S.autoBackup = state.settings.autoBackup;
+    await Promise.all([loadMeta(), loadProfiles()]);
+    try {
+      await loadSaves();
+    } catch (e) {
+      S.error = t('nosave.listFailed', { error: e.message }); // "Refresh list" tries again
+    }
+    render();
+    const first = S.saves.find(s => s.ok) || S.saves[0];
+    if (first) await openSave(first.id);
+  } catch (e) {
+    S.error = t('boot.failed', { error: e.message });
+    render();
+  }
+})();
+</script>
+</body>
+</html>

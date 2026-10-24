@@ -1,0 +1,35 @@
+name: Bug report / Fehler melden
+description: Something does not work as expected. / Etwas funktioniert nicht wie erwartet.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Please do not attach save files (.es3) or MetaSave.es3** – they contain Steam IDs and player names.
+        Black out names and paths in screenshots.
+        **Bitte keine Spielstände (.es3) oder MetaSave.es3 anhängen** – sie enthalten Steam-IDs und Spielernamen.
+        Schwärze Namen und Pfade in Screenshots.
+  - type: input
+    id: version
+    attributes:
+      label: Editor version / Editor-Version
+      description: Info dialog, top right / Info-Dialog oben rechts
+    validations:
+      required: true
+  - type: input
+    id: build
+    attributes:
+      label: Game build / Spiel-Build
+      description: Also shown in the info dialog / Steht ebenfalls im Info-Dialog
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened? / Was ist passiert?
+      description: Steps, expected and actual result, error message. / Schritte, erwartetes und tatsächliches Ergebnis, Fehlermeldung.
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log (optional)
+      description: '%APPDATA%\REPO Save Editor\main.log – check for names and paths first / bitte vorher Namen und Pfade prüfen'
+      render: text
