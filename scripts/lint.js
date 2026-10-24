@@ -6,6 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const { ESLint } = require('eslint');
+const { inlineScripts } = require('../lib/server');
 
 const ROOT = path.join(__dirname, '..');
 const PAGE = path.join(ROOT, 'public', 'index.html');
@@ -15,9 +16,9 @@ const PAGE = path.join(ROOT, 'public', 'index.html');
   const results = await eslint.lintFiles(['.']);
 
   const html = fs.readFileSync(PAGE, 'utf8');
-  const script = html.match(/<script>([\s\S]*?)<\/script>/);
-  const lineOffset = html.slice(0, script.index + '<script>'.length).split('\n').length - 1;
-  for (const r of await eslint.lintText(script[1], { filePath: PAGE + '.js' })) {
+  const [script] = inlineScripts(html);
+  const lineOffset = html.slice(0, script.start).split('\n').length - 1;
+  for (const r of await eslint.lintText(script.text, { filePath: PAGE + '.js' })) {
     r.filePath = PAGE;
     for (const m of r.messages) {
       m.line += lineOffset;

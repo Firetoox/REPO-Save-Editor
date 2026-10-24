@@ -330,6 +330,15 @@ test('Messages: German and English complete, same placeholders', () => {
   assert.deepStrictEqual([e.status, e.message, errorText(e, 'de')], [404, 'Save not found: X', 'Spielstand nicht gefunden: X']);
 });
 
+test('Page: inline scripts are found for their CSP hashes', () => {
+  const { inlineScripts } = require('../lib/server');
+  const html = '<p>x</p><script>let a = 1;</script><div></div><script>\nb();\n</script><script>unclosed';
+  assert.deepStrictEqual(inlineScripts(html).map(s => s.text), ['let a = 1;', '\nb();\n']);
+  assert.strictEqual(html.slice(inlineScripts(html)[1].start, inlineScripts(html)[1].start + 4), '\nb()');
+  const page = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  assert.strictEqual(inlineScripts(page).length, 1, 'the page has exactly one inline script');
+});
+
 test('App: the window id equals build.appId (the installed app cannot read it from package.json)', () => {
   const main = fs.readFileSync(path.join(__dirname, '..', 'electron', 'main.js'), 'utf8');
   assert.ok(main.includes("app.setAppUserModelId('" + require('../package.json').build.appId + "')"));

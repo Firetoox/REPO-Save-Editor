@@ -340,7 +340,10 @@ test('Opening folders only for known targets', async () => {
 
 test('Page: CSP with script hash, no framing, no external addresses', async () => {
   const r = await call('GET', '/', undefined, {});
-  const script = r.data.match(/<script>([\s\S]*?)<\/script>/)[1];
+  // the page has exactly one inline script; found by plain search, independent of the server's helper
+  assert.strictEqual(r.data.split('<script').length - 1, 1);
+  const start = r.data.indexOf('<script>') + '<script>'.length;
+  const script = r.data.slice(start, r.data.indexOf('</script>', start));
   const hash = crypto.createHash('sha256').update(script, 'utf8').digest('base64');
   const csp = r.headers.get('content-security-policy');
   assert.ok(csp.includes("script-src 'sha256-" + hash + "'"), csp);
