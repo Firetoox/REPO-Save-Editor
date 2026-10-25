@@ -252,6 +252,14 @@ test('Save changes: the file holds exactly the changes', async () => {
     if (JSON.stringify(dd[k]) !== JSON.stringify(original.dictionaryOfDictionaries.value[k])) throw new Error(k + ' changed');
   }
   if (JSON.stringify(json.playerNames) !== JSON.stringify(original.playerNames)) throw new Error('playerNames changed');
+  if (shotsDir) {
+    // the pictures show the invented dates of the test data, not the day (and local time) they were taken
+    const at = new Date(2026, 0, 15, 23, 20);
+    const backups = path.join(files.work, 'backups', id);
+    for (const f of [saveFile(id), ...fs.readdirSync(backups).map(n => path.join(backups, n))]) {
+      if (fs.statSync(f).mtimeMs > at.getTime()) fs.utimesSync(f, at, at);
+    }
+  }
 });
 
 test('Backups: compare a game backup', async () => {
@@ -264,6 +272,38 @@ test('Backups: compare a game backup', async () => {
   await shot('compare');
   await js('document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); return true');
   if (await js('return !!S.modal')) throw new Error('Escape does not close');
+});
+
+test('A deleted save shows up with its team name and comes back with one click', async () => {
+  // the second save of the test data (any other save with copies); the open one stays
+  const victim = await js('const s = S.saves.find(x => x.ok && x.team === "Second Run") || S.saves.find(x => x.ok && x.id !== S.saveId); return s && { id: s.id, team: s.team }');
+  if (!victim) return;
+  const dir = path.join(files.savesDir, victim.id);
+  const main = path.join(dir, victim.id + '.es3');
+  const keep = fs.readFileSync(main);
+  const listedJs = 'S.deleted.some(d => d.id === ' + JSON.stringify(victim.id) + ')';
+  await js('await pollStatus(); return true'); // the page knows the current state of the saves folder
+  fs.rmSync(dir, { recursive: true, force: true }); // what R.E.P.O. does when the whole team dies
+  try {
+    // the editor notices it by itself (watcher + regular status check)
+    for (let i = 0; i < 50 && !await js('await pollStatus(); return ' + listedJs); i++) await sleep(200);
+    if (!await js('return ' + listedJs)) throw new Error('deleted save not listed');
+    const entry = '[data-act=view-backups][data-id="' + victim.id + '"]';
+    if (!await js('const el = document.querySelector(' + JSON.stringify(entry) + '); return !!el && el.innerText.includes(' + JSON.stringify(victim.team) + ')')) throw new Error('team name missing in the sidebar');
+    await click(entry);
+    await until('S.view === "backups" && S.all.list && S.all.focus === ' + JSON.stringify(victim.id), 'all backups of the save');
+    await click('[data-act=all-unfocus]');
+    await shot('backups');
+    await click('[data-act=all-undelete][data-id="' + victim.id + '"]');
+    await until('S.modal && S.modal.type === "undelete"', 'dialog');
+    await click('[data-act=confirm-undelete]');
+    await until('S.view === "save" && S.saveId === ' + JSON.stringify(victim.id) + ' && S.edit && !S.busy', 'restored save opened');
+    if (!fs.existsSync(main)) throw new Error('save file not created');
+    await click('[data-act=select-save][data-id="' + id + '"]'); // back to the save the next steps use
+    await until('S.saveId === ' + JSON.stringify(id) + ' && S.edit && S.view === "save"', 'first save open again');
+  } finally {
+    if (!fs.existsSync(main)) { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(main, keep); }
+  }
 });
 
 test('Duplicate', async () => {
@@ -394,7 +434,7 @@ test('Switching language: English UI without German leftovers, choice is stored'
       clone.querySelectorAll("script, textarea").forEach(e => e.remove());
       const attrs = [...document.querySelectorAll("[title], [placeholder], [aria-label]")].map(e => [e.title, e.placeholder, e.getAttribute("aria-label")].filter(Boolean).join(" "));
       let text = clone.innerText + "\\n" + attrs.join("\\n");
-      const names = [].concat(S.saves.map(s => s.team), (S.backups || []).map(b => b.team), S.edit ? [S.edit.team].concat(S.edit.players.map(p => p.name)) : [])
+      const names = [].concat(S.saves.map(s => s.team), (S.backups || []).map(b => b.team), S.deleted.map(d => d.team), (S.all.list || []).flatMap(g => [g.team].concat(g.backups.map(b => b.team))), S.edit ? [S.edit.team].concat(S.edit.players.map(p => p.name)) : [])
         .filter(n => typeof n === "string" && n.length > 1).sort((a, b) => b.length - a.length);
       for (const n of names) text = text.split(n).join(" ");
       const re = new RegExp(${german}.source, "g"), out = []; let m;
@@ -461,6 +501,14 @@ test('Switching language: English UI without German leftovers, choice is stored'
     await scan('password ' + reason);
     await js('S.server.password = window.__keepPw; delete window.__keepPw; render(); return true');
   }
+  await click('[data-act=view-backups]');
+  await until('S.view === "backups" && S.all.list && S.all.list.length', 'all backups');
+  await scan('all backups');
+  await dialog('restore from all backups', 'openModal({ type: "restore", group: S.all.list[0], backup: S.all.list[0].backups[0] })');
+  await dialog('undelete', 'openModal({ type: "undelete", group: S.all.list[0], backup: S.all.list[0].backups[0] })');
+  await js('S.deleted = [{ id: "REPO_SAVE_2000_01_01_00_00_00", team: "Test", newest: { mtime: 0, level: 1 }, count: 1 }]; render(); return true');
+  await scan('sidebar with a deleted save');
+  await js('S.deleted = []; render(); return true');
   await click('[data-act=view-cosmetics]');
   await until('S.meta && document.querySelectorAll(".coscard").length > 100', 'cosmetics');
   await scan('cosmetics');

@@ -112,6 +112,7 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); m
 .main { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; }
 .savebtn { width: 100%; text-align: left; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: transparent; display: flex; flex-direction: column; gap: 4px; }
 .savebtn.active { border-color: var(--accent); background: var(--panel2); }
+.savebtn.deleted { border-style: dashed; }
 .savebtn .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .lvl { font-family: var(--display); font-weight: 600; font-size: 12px; padding: 2px 8px; border-radius: 6px; background: var(--chip); flex: none; }
 .card { padding: 16px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
@@ -213,7 +214,7 @@ h1 { margin-top: 6px; font-family: var(--display); font-size: 34px; line-height:
 
 /* backups table */
 .table { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-.trow { display: grid; grid-template-columns: 130px 150px minmax(0, 1fr) 48px 90px auto; gap: 12px; padding: 10px 16px; align-items: center; border-top: 1px solid var(--line); }
+.trow { display: grid; grid-template-columns: 130px 200px minmax(0, 1fr) 48px 90px auto; gap: 12px; padding: 10px 16px; align-items: center; border-top: 1px solid var(--line); }
 .trow.head { border-top: 0; background: var(--top); font-size: 12px; color: var(--muted); }
 .trow .acts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
 .tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 12px; }
@@ -297,6 +298,9 @@ const S = {
   raw: null,                        // expert mode: { hash, text, original }
   meta: null, metaEdit: null, metaError: null, metaBackups: null,   // MetaSave (cosmetics); metaEdit = Set of ids
   cos: { cat: 'all', type: '', show: 'all', rarity: 'all', q: '' },
+  deleted: [],                      // saves the game deleted that still have backups (sidebar)
+  all: { list: null, q: '', show: 'all', focus: null, more: [] },   // "All backups" view
+  savesRevision: null,              // from /api/status: changes when something happens in the saves folder
   profiles: [],
   autoBackup: true,                 // stored by the server (settings.json), loaded with /api/state
   modal: null, modalReturn: null, toast: null, busy: false, error: null
@@ -400,6 +404,36 @@ const TEXTS = {
   'side.found': ['{n} gefunden', '{n} found'],
   'side.none': ['Keine Spielstände gefunden.', 'No saves found.'],
   'side.refresh': ['Liste aktualisieren', 'Refresh list'],
+  'side.allBackups': ['Alle Backups', 'All backups'],
+  'side.allBackupsLine': ['Alle Spielstände, auch gelöschte', 'All saves, also deleted ones'],
+  'side.deleted': ['Gelöscht', 'Deleted'],
+  'side.deletedLine': ['gelöscht · letzter Stand {date}', 'deleted · last state {date}'],
+  'n.saveGroup': [['{n} Spielstand', '{n} Spielstände'], ['{n} save', '{n} saves']],
+  'n.deletedSave': [['{n} gelöschter Spielstand', '{n} gelöschte Spielstände'], ['{n} deleted save', '{n} deleted saves']],
+  'all.title': ['Alle Backups', 'All backups'],
+  'all.intro': ['Hier stehen alle Spielstände, von denen der Editor Backups hat, auch solche, die R.E.P.O. gelöscht hat (das passiert, wenn das ganze Team stirbt). Neue Stände sichert der Editor beim Start, beim Aktualisieren der Liste, nach jedem Speichern und, solange er offen ist, jedes Mal, wenn das Spiel speichert.',
+    'This lists every save the editor has backups of, also saves R.E.P.O. has deleted (it does that when the whole team dies). The editor backs up new states at start, when the list is refreshed, after every save and, while it is open, every time the game saves.'],
+  'all.search': ['Teamname oder Ordner suchen …', 'Search team name or folder…'],
+  'all.searchLabel': ['Spielstände durchsuchen', 'Search saves'],
+  'all.showExisting': ['Vorhanden', 'Existing'],
+  'all.showDeleted': ['Gelöscht', 'Deleted'],
+  'all.exists': ['vorhanden', 'exists'],
+  'all.deleted': ['gelöscht', 'deleted'],
+  'all.current': ['aktuell {state}', 'now {state}'],
+  'all.colTeam': ['Team', 'Team'],
+  'all.more': [['{n} weiteres Backup zeigen', '{n} weitere Backups zeigen'], ['Show {n} more backup', 'Show {n} more backups']],
+  'all.noHits': ['Keine passenden Spielstände.', 'No matching saves.'],
+  'all.none': ['Noch keine Backups.', 'No backups yet.'],
+  'all.loading': ['Backups werden geladen …', 'Loading backups…'],
+  'all.focus': ['Nur „{team}“', 'Only "{team}"'],
+  'all.showEverything': ['Alle Spielstände zeigen', 'Show all saves'],
+  'all.open': ['Öffnen', 'Open'],
+  'all.unnamed': ['(ohne Namen)', '(no name)'],
+  'dlg.undelete.title': ['Gelöschten Spielstand wiederherstellen?', 'Restore the deleted save?'],
+  'dlg.undelete.lead': ['„{team}“ wird mit diesem Stand neu angelegt und erscheint wieder in der Liste und im Spiel.', '"{team}" is created again with this state and shows up in the list and in the game again.'],
+  'msg.undeleted': ['Wiederhergestellt: {team}', 'Restored: {team}'],
+  'msg.openDeleted': ['R.E.P.O. hat den geöffneten Spielstand gelöscht. Unter „Alle Backups“ lässt er sich wiederherstellen.', 'R.E.P.O. has deleted the open save. You can restore it under "All backups".'],
+  'msg.listSnapshots': [['Liste aktualisiert. Neuer Stand gesichert: {n} Spielstand.', 'Liste aktualisiert. Neuer Stand gesichert: {n} Spielstände.'], ['List refreshed. New state backed up: {n} save.', 'List refreshed. New state backed up: {n} saves.']],
   'side.opened': ['Geöffnet', 'Currently open'],
   'side.error': ['Fehler: {error}', 'Error: {error}'],
   'side.cosUnlocked': ['{n} von {total} freigeschaltet', '{n} of {total} unlocked'],
@@ -516,8 +550,8 @@ const TEXTS = {
 
   // backups
   'backups.loading': ['Backups werden geladen …', 'Loading backups…'],
-  'backups.intro': ['Der Editor sichert jeden Spielstand als Original, sobald er ihn zum ersten Mal findet, und {when}. R.E.P.O. legt außerdem eigene BACKUP-Dateien im Spielstand-Ordner an. Vor dem Wiederherstellen wird der aktuelle Stand immer gesichert.',
-    'The editor backs up every save as the original the first time it sees it, and {when}. R.E.P.O. also keeps its own BACKUP files in the save folder. Before a restore the current version is always backed up.'],
+  'backups.intro': ['Der Editor sichert jeden Spielstand als Original, sobald er ihn zum ersten Mal findet, und {when}. Neue Stände des Spiels sichert er beim Start, beim Aktualisieren der Liste und, solange er offen ist, jedes Mal, wenn das Spiel speichert. R.E.P.O. legt außerdem eigene BACKUP-Dateien im Spielstand-Ordner an. Vor dem Wiederherstellen wird der aktuelle Stand immer gesichert.',
+    'The editor backs up every save as the original the first time it sees it, and {when}. New states of the game are backed up at start, when the list is refreshed and, while the editor is open, every time the game saves. R.E.P.O. also keeps its own BACKUP files in the save folder. Before a restore the current version is always backed up.'],
   'backups.whenOn': ['vor jedem Speichern erneut', 'again before every save'],
   'backups.whenOff': ['vor dem Speichern nur, wenn das automatische Backup eingeschaltet ist', 'before saving only if automatic backup is on'],
   'backups.date': ['Stand vom', 'Saved on'],
@@ -535,11 +569,15 @@ const TEXTS = {
   'backup.beforeSave': ['Editor · vor dem Speichern', 'Editor · before save'],
   'backup.manual': ['Editor · manuell', 'Editor · manual'],
   'backup.beforeRestore': ['Editor · vor dem Wiederherstellen', 'Editor · before restore'],
+  'backup.afterSave': ['Editor · nach dem Speichern', 'Editor · after save'],
+  'backup.snapshot': ['Editor · automatisch', 'Editor · automatic'],
   'backup.editor': ['Editor', 'Editor'],
   'backupShort.original': ['Original', 'Original'],
   'backupShort.beforeSave': ['Vor dem Speichern', 'Before save'],
   'backupShort.manual': ['Manuell', 'Manual'],
   'backupShort.beforeRestore': ['Vor dem Wiederherstellen', 'Before restore'],
+  'backupShort.afterSave': ['Nach dem Speichern', 'After save'],
+  'backupShort.snapshot': ['Automatisch', 'Automatic'],
   'backup.game': ['Spiel · {name}', 'Game · {name}'],
 
   // expert mode
@@ -1122,7 +1160,8 @@ function viewPasswordNotice() {
 
 function viewApp() {
   const chg = changes();
-  const main = html`${viewPasswordNotice()}${S.view === 'cosmetics' ? viewCosmetics() : (S.edit ? viewSave(chg) : viewNoSave())}`;
+  const view = S.view === 'cosmetics' ? viewCosmetics() : S.view === 'backups' ? viewAllBackups() : (S.edit ? viewSave(chg) : viewNoSave());
+  const main = html`${viewPasswordNotice()}${view}`;
   // while a dialog is open, everything behind it is inert (no focus, no clicks)
   const inert = attr('inert', S.modal);
   return html`${viewTopbar(inert)}<div class="layout"${inert}>${viewSidebar(chg)}<main class="main">${main}</main></div>${viewModal(chg)}`;
@@ -1170,9 +1209,17 @@ function viewSidebar(chg) {
       <span class="row"><span class="strong hstack">${svg(I.shirt)}Cosmetics</span><span class="lvl">GLOBAL</span></span>
       <span class="small muted">${cosText}</span>
       ${mc ? html`<span class="small c-accent">${tp('n.unsaved', mc)}</span>` : ''}</button>
+    <button class="savebtn${S.view === 'backups' ? ' active' : ''}" data-act="view-backups" aria-current="${S.view === 'backups' ? 'true' : 'false'}">
+      <span class="row"><span class="strong hstack">${svg(I.shieldOk)}${t('side.allBackups')}</span></span>
+      <span class="small muted">${t('side.allBackupsLine')}</span>
+      ${S.deleted.length ? html`<span class="small c-bad">${tp('n.deletedSave', S.deleted.length)}</span>` : ''}</button>
     <div class="vstack">
       <div class="between inset"><h2 class="caps small muted">${t('side.saves')}</h2><div class="small dim">${t('side.found', { n: S.saves.length })}</div></div>
       ${saves.length ? saves : html`<div class="empty">${t('side.none')}</div>`}
+      ${S.deleted.length ? html`<div class="between inset mt-6"><h2 class="caps small muted">${t('side.deleted')}</h2><div class="small dim">${S.deleted.length}</div></div>
+        ${S.deleted.map(d => html`<button class="savebtn deleted${S.view === 'backups' && S.all.focus === d.id ? ' active' : ''}" data-act="view-backups" data-id="${d.id}">
+          <span class="row"><span class="strong wrap">${d.team || d.id}</span>${d.newest && d.newest.level != null ? html`<span class="lvl">LVL ${d.newest.level}</span>` : ''}</span>
+          <span class="small muted">${t('side.deletedLine', { date: d.newest ? fmtTime(d.newest.mtime) : '–' })}</span></button>`)}` : ''}
       <button class="btn sm ghost" data-act="reload-saves">${svg(I.reload, 14)}${t('side.refresh')}</button>
     </div>
     <div class="card vstack gap-12">
@@ -1197,7 +1244,10 @@ function viewNoSave() {
     return html`<div class="body"><div class="content">${notice('warn', text)}</div></div>`;
   }
   const text = S.error || (S.saves.length ? t('nosave.loading') : t('nosave.none'));
-  return html`<div class="body"><div class="content"><div class="empty">${text}</div></div></div>`;
+  // the open save was deleted by the game: its backups are one click away
+  const gone = S.saveId && S.deleted.some(d => d.id === S.saveId);
+  return html`<div class="body"><div class="content"><div class="empty vstack">${text}
+    ${gone ? html`<div><button class="btn" data-act="view-backups" data-id="${S.saveId}">${svg(I.shieldOk)}${t('side.allBackups')}</button></div>` : ''}</div></div></div>`;
 }
 
 function viewSave(chg) {
@@ -1448,6 +1498,61 @@ function viewRaw(chg) {
     <label for="rawbox" class="sr">${t('raw.label')}</label><textarea id="rawbox" class="rawbox" spellcheck="false" data-fk="raw" data-raw="1" data-keep-scroll="raw">${S.raw.text}</textarea>`;
 }
 
+// ---------- all backups (also of saves the game deleted) ----------------------------------------------------
+const ALL_ROWS = 8; // backups shown per save before "show more"
+const backupState = b => [b.team, 'Level ' + (b.level != null ? b.level : '–'), b.currency != null ? money(b.currency) : '–', fmtTime(b.mtime)].join(' · ');
+
+function viewAllBackups() {
+  const A = S.all, list = A.list;
+  const head = html`<section class="savehead"><div class="headrow"><div class="shrink">
+      <div class="mono small dim wrap">${breakable(displayPath(S.server.backupDir))}</div>
+      <h1>${t('all.title')}</h1>
+      ${list ? html`<div class="meta"><span>${tp('n.saveGroup', list.length)}</span><span>${tp('n.deletedSave', list.filter(g => !g.exists).length)}</span></div>` : ''}
+    </div><div class="actions">
+      <button class="btn ghost" data-act="all-reload"${attr('disabled', S.busy)}>${svg(I.reload)}${t('btn.reload')}</button>
+      <button class="btn" data-act="open-folder" data-what="backups">${svg(I.folder)}${t('btn.openBackups')}</button>
+    </div></div></section>`;
+  if (!list) return html`${head}<div class="body"><div class="content"><div class="empty">${t('all.loading')}</div></div></div>`;
+  const q = A.q.trim().toLowerCase();
+  const has = text => String(text || '').toLowerCase().includes(q);
+  const matches = g => !q || has(g.team) || has(g.id) || g.backups.some(b => has(b.team));
+  const shown = list.filter(g => (!A.focus || g.id === A.focus) && (A.show === 'all' || (A.show === 'deleted') === !g.exists) && matches(g));
+  const focused = A.focus && list.find(g => g.id === A.focus);
+  const shows = [['all', 'filter.all'], ['existing', 'all.showExisting'], ['deleted', 'all.showDeleted']]
+    .map(([k, key]) => filterButton({ act: 'all-show', data: { show: k }, active: A.show === k, label: t(key) }));
+  const tools = focused
+    ? html`<div class="hstack gap-12"><span class="strong">${t('all.focus', { team: focused.team || focused.id })}</span><button class="btn sm" data-act="all-unfocus">${t('all.showEverything')}</button></div>`
+    : html`<div class="hstack gap-12">${searchBox('all-search', 'all-search', A.q, t('all.search'), t('all.searchLabel'))}</div>${filterRow('all-show-label', t('filter.status'), shows)}`;
+  return html`${head}<div class="body"><div class="content">
+    ${notice('info', t('all.intro'))}${tools}
+    ${shown.length ? shown.map(viewBackupGroup) : html`<div class="empty">${t(list.length ? 'all.noHits' : 'all.none')}</div>`}
+  </div></div>`;
+}
+
+/** One save in "All backups": team name, folder, whether it still exists, its backups. */
+function viewBackupGroup(g) {
+  const all = S.all.more.includes(g.id);
+  const rows = (all ? g.backups : g.backups.slice(0, ALL_ROWS)).map(b => html`<div class="trow" role="row"><div role="cell">${fmtTime(b.mtime)}</div>
+      <div role="cell"><span class="tag ${b.source === 'game' ? 'info' : 'accent'}">${backupLabel(b)}</span></div>
+      <div role="cell" class="file">${b.ok ? b.team || t('all.unnamed') : ''}</div>
+      <div role="cell" class="caps-num">${b.ok && b.level != null ? b.level : '–'}</div>
+      <div role="cell">${b.ok ? (b.currency != null ? money(b.currency) : '–') : html`<span class="c-bad">${t('backups.broken')}</span>`}</div>
+      <div role="cell" class="acts"><button class="btn sm" data-act="${g.exists ? 'all-restore' : 'all-undelete'}" data-id="${g.id}" data-source="${b.source}" data-file="${b.file}"${attr('disabled', !b.ok)}
+        aria-label="${t('backups.restoreLabel', { file: b.file })}">${t('btn.restore')}</button></div></div>`);
+  const now = g.current && g.current.ok ? t('all.current', { state: backupState(g.current) }) : '';
+  const hidden = g.backups.length - rows.length;
+  const heads = ['date', 'source'].map(h => html`<div role="columnheader">${t('backups.' + h)}</div>`).concat(html`<div role="columnheader">${t('all.colTeam')}</div>`,
+    ['level', 'money'].map(h => html`<div role="columnheader">${t('backups.' + h)}</div>`), html`<div role="columnheader"><span class="sr">${t('backups.actions')}</span></div>`);
+  return html`<div class="card vstack gap-12">
+    <div class="between"><div class="shrink"><h2 class="strong hstack">${g.team || t('all.unnamed')} <span class="tag ${g.exists ? 'info' : 'bad'}">${t(g.exists ? 'all.exists' : 'all.deleted')}</span></h2>
+      <div class="mono small dim wrap">${g.id}${now ? ' · ' + now : ''}</div></div>
+      ${g.exists ? html`<button class="btn sm" data-act="select-save" data-id="${g.id}">${t('all.open')}</button>` : ''}</div>
+    ${rows.length ? html`<div class="table" role="table" aria-label="${g.team || g.id}"><div class="trow head" role="row">${heads}</div>${rows}</div>`
+      : html`<div class="small muted">${t('all.none')}</div>`}
+    ${hidden > 0 ? html`<div><button class="btn sm ghost" data-act="all-more" data-id="${g.id}">${tp('all.more', hidden)}</button></div>` : ''}
+  </div>`;
+}
+
 /** Current cosmetic filters; the status filter (unlocked/locked) can be left out for bulk actions. */
 function cosFilter(ignoreStatus) {
   const f = S.cos, q = f.q.trim().toLowerCase(), on = S.metaEdit;
@@ -1597,16 +1702,19 @@ function viewModal(chg) {
         ${rawDirty() ? notice('info', t('dlg.write.rawLost')) : ''}`,
       actions: html`${cancelButton()}${confirmButton('confirm-write', t(S.busy ? 'btn.writing' : 'btn.writeNow'), running || S.busy)}`
     }),
-    restore: () => {
-      const b = M.backup;
-      const state = [b.team, 'Level ' + (b.level != null ? b.level : '–'), b.currency != null ? money(b.currency) : '–', fmtTime(b.mtime)].join(' · ');
-      return dialog({
-        title: t('dlg.restore.title'),
-        lead: t('dlg.restore.lead'),
-        body: html`${backupBox(state)}${runningNote()}${chg.length ? notice('warn', t('dlg.lost')) : ''}`,
-        actions: html`${cancelButton()}${confirmButton('confirm-restore', t('btn.restore'), running || S.busy)}`
-      });
-    },
+    // M.group is set when the backup comes from "All backups" (any save, not only the open one)
+    restore: () => dialog({
+      title: t('dlg.restore.title'),
+      lead: t('dlg.restore.lead'),
+      body: html`${backupBox(backupState(M.backup))}${runningNote()}${chg.length && (!M.group || M.group.id === S.saveId) ? notice('warn', t('dlg.lost')) : ''}`,
+      actions: html`${cancelButton()}${confirmButton('confirm-restore', t('btn.restore'), running || S.busy)}`
+    }),
+    undelete: () => dialog({
+      title: t('dlg.undelete.title'),
+      lead: t('dlg.undelete.lead', { team: M.group.team || M.group.id }),
+      body: html`${backupBox(backupState(M.backup))}${runningNote()}`,
+      actions: html`${cancelButton()}${confirmButton('confirm-undelete', t('btn.restore'), running || S.busy)}`
+    }),
     compare: () => dialog({
       title: t('dlg.compare.title'),
       lead: t('dlg.compare.lead', { file: M.backup.file }),
@@ -1724,7 +1832,21 @@ function toast(text, isError, action) {
 }
 
 // ---------- loading --------------------------------------------------------------------------------
-async function loadSaves() { S.saves = await api('GET', '/api/saves'); }
+async function loadSaves() {
+  const [saves, deleted] = await Promise.all([api('GET', '/api/saves'), api('GET', '/api/deleted-saves')]);
+  S.saves = saves;
+  S.deleted = deleted;
+}
+async function loadAllBackups() {
+  try { S.all.list = await api('GET', '/api/all-backups'); } catch (e) { S.all.list = S.all.list || []; toast(t('msg.backupsFailed', { error: e.message }), true); }
+}
+/** The game deleted the open save (the team died): say so, and where to get it back. */
+function checkOpenSave() {
+  if (!S.saveId || S.saves.some(s => s.id === S.saveId)) return;
+  if (S.edit && changes().length) { toast(t('msg.openDeleted'), true); return; } // keep the edits on screen
+  S.loaded = null; S.edit = null; S.backups = null; S.raw = null;
+  S.error = t('msg.openDeleted');
+}
 
 let openRequest = 0; // ignores answers of older requests when the user clicks quickly
 async function openSave(id) {
@@ -1817,10 +1939,25 @@ const doRaw = () => runWrite(async () => {
   return backupMessage(r, t('msg.rawWritten'));
 }, 'msg.notWritten', reloadSave);
 
-const doRestore = b => runWrite(async () => {
-  const r = await api('POST', '/api/restore' + idQuery(S.saveId), { source: b.source, file: b.file, hash: S.loaded.hash });
-  return t('msg.restored', { file: r.backup });
-}, 'msg.notRestored', reloadSave);
+/** Restores a backup of the open save or, from "All backups", of any existing save `group`. */
+const doRestore = (b, group) => {
+  const id = group ? group.id : S.saveId;
+  const hash = group ? group.current && group.current.hash : S.loaded.hash;
+  return runWrite(async () => {
+    const r = await api('POST', '/api/restore' + idQuery(id), { source: b.source, file: b.file, hash });
+    return t('msg.restored', { file: r.backup });
+  }, 'msg.notRestored', group ? () => reloadAfterRestore(id) : reloadSave);
+};
+const reloadAfterRestore = async id => {
+  await loadSaves();
+  await loadAllBackups();
+  if (id === S.saveId && !changes().length) { const view = S.view; await openSave(id); S.view = view; }
+};
+/** Brings back a save the game deleted, from one of its backups, and opens it. */
+const doUndelete = (group, b) => runWrite(async () => {
+  await api('POST', '/api/restore-deleted' + idQuery(group.id), { file: b.file });
+  return t('msg.undeleted', { team: group.team || group.id });
+}, 'msg.notRestored', async () => { await loadSaves(); S.all.focus = null; S.all.list = null; await openSave(group.id); });
 
 const doCosWrite = () => runWrite(async () => {
   const r = await api('POST', '/api/meta', { hash: S.meta.hash, unlocks: [...S.metaEdit], autoBackup: S.autoBackup });
@@ -1889,6 +2026,27 @@ const ACTIONS = {
   },
 
   // navigation
+  'view-backups': async d => {
+    S.view = 'backups';
+    S.all.focus = d.id || null;
+    render();
+    await loadAllBackups();
+  },
+  'all-show': d => { S.all.show = d.show; },
+  'all-unfocus': () => { S.all.focus = null; },
+  'all-more': d => { S.all.more.push(d.id); },
+  'all-reload': async () => { await loadAllBackups(); toast(t('msg.reloaded')); },
+  'all-restore': d => {
+    const group = (S.all.list || []).find(g => g.id === d.id);
+    const backup = group && group.backups.find(b => b.file === d.file && b.source === d.source);
+    if (backup) openModal({ type: 'restore', backup, group });
+  },
+  'all-undelete': d => {
+    const group = (S.all.list || []).find(g => g.id === d.id);
+    const backup = group && group.backups.find(b => b.file === d.file);
+    if (backup) openModal({ type: 'undelete', backup, group });
+  },
+  'confirm-undelete': () => doUndelete(S.modal.group, S.modal.backup),
   'view-cosmetics': async () => {
     S.view = 'cosmetics';
     if (!metaChanges().length) await loadMeta(); // fresh from disk unless there are pending edits
@@ -1901,12 +2059,15 @@ const ACTIONS = {
     try {
       const r = await api('POST', '/api/rescan', {});
       S.saves = r.saves;
+      S.deleted = r.deleted;
       S.server.savesDirExists = r.savesDirExists;
       S.server.password = r.password;
       if (S.metaError && r.metaExists) await loadMeta();
       if (!S.saveId) S.error = null;
       if (!S.saveId && S.saves.length) await openSave((S.saves.find(x => x.ok) || S.saves[0]).id); // first save appeared
-      toast(r.made.length ? tp('msg.listMade', r.made.length) : t('msg.listUpdated'));
+      if (S.view === 'backups') await loadAllBackups();
+      checkOpenSave();
+      toast(r.made.length ? tp('msg.listMade', r.made.length) : r.updated.length ? tp('msg.listSnapshots', r.updated.length) : t('msg.listUpdated'));
     } catch (e) { toast(t('msg.listFailed', { error: e.message }), true); }
   },
   'reload-save': () => guardUnsaved('guard.reloadTitle', 'guard.discardReload', async () => {
@@ -2004,7 +2165,7 @@ const ACTIONS = {
     } catch (e) { toast(t('msg.backupFailed', { error: e.message }), true); }
   },
   'restore': d => openModal({ type: 'restore', backup: S.backups[Number(d.i)] }),
-  'confirm-restore': () => doRestore(S.modal.backup),
+  'confirm-restore': () => doRestore(S.modal.backup, S.modal.group),
   'compare': d => { openCompare(S.backups[Number(d.i)]); return NO_RENDER; },
 
   // profiles
@@ -2120,6 +2281,7 @@ document.addEventListener('input', e => {
     team: v => { S.edit.team = v; },
     'item-search': v => { S.items.q = v; },
     'cos-search': v => { S.cos.q = v; },
+    'all-search': v => { S.all.q = v; },
     'dup-name': v => { S.modal.team = v; },
     'prof-name': v => { S.modal.name = v; }
   };
@@ -2172,13 +2334,23 @@ window.addEventListener('beforeunload', e => {
   if (changes().length || metaChanges().length || rawDirty()) { e.preventDefault(); e.returnValue = ''; }
 });
 
-// Keep the "game running" indicator current.
+/** Keeps the "game running" indicator and the lists current (the game saves, or deletes a save). */
+async function pollStatus() {
+  const r = await api('GET', '/api/status');
+  let changed = r.gameRunning !== S.server.gameRunning;
+  S.server.gameRunning = r.gameRunning;
+  if (S.savesRevision !== null && r.savesRevision !== S.savesRevision && !S.busy) {
+    await loadSaves();
+    if (S.view === 'backups') await loadAllBackups();
+    checkOpenSave();
+    changed = true;
+  }
+  if (!S.busy) S.savesRevision = r.savesRevision;
+  if (changed) render();
+}
 setInterval(async () => {
   if (!S.server || document.hidden) return;
-  try {
-    const r = await api('GET', '/api/status');
-    if (r.gameRunning !== S.server.gameRunning) { S.server.gameRunning = r.gameRunning; render(); }
-  } catch (e) { /* editor stopped */ }
+  try { await pollStatus(); } catch (e) { /* editor stopped */ }
 }, POLL_MS);
 
 (async function init() {

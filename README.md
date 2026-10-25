@@ -16,7 +16,7 @@ Windows app to back up, edit and restore save games of **R.E.P.O.** – run valu
 | Players | All 13 upgrades per player (Health, Stamina, Extra Jump, Tumble Launch, Range, Strength, Throw, Sprint Speed, Crouch Rest, Tumble Wings, Tumble Climb, Death Head Battery, Map Player Count), current HP, crown |
 | Weapons & items | Put any of the game's 59 items into the truck or remove them, recharge batteries |
 | Profiles | Built-in quick profiles and your own, applicable to any save |
-| Backups | Compare any backup with the current save, restore with one click |
+| Backups | All backups of all saves in one list, with team name, level and money; restore with one click, also saves the game has deleted; compare any backup with the current save |
 | Expert | Edit the complete save as JSON |
 | Language | German or English, switch with **DE \| EN** at the top right; the choice is remembered (without a choice the Windows language is used) |
 | Cosmetics (global) | Unlock single, filtered or all 547 cosmetics; filter by category, type, rarity (Common to Ultra Rare) and status; cosmetics with a fixed color are marked |
@@ -47,10 +47,19 @@ Uninstall via Windows Settings → Apps. Your backups and profiles are kept.
 
 New items appear in the truck when the next level loads. In multiplayer only the host's save counts; other players are matched by Steam ID. Cosmetics apply to all saves on your PC, not to a single save.
 
+### When the game deletes a save
+
+R.E.P.O. deletes a save when the whole team dies. The editor keeps its backups: deleted saves show up on the left under **Deleted**, and **All backups** lists every backup of every save with the team name, level and money. **Restore** creates the deleted save again, and it shows up in the game again.
+
+The editor backs up every new state of a save when it starts, when you refresh the list, after saving and, while it is open, every time the game saves. Keep it open while you play, and every level reached is backed up.
+
+![All backups, including a deleted save](docs/screenshots/en/backups.png)
+
 ## Safety and privacy
 
 - The first time the editor sees a save (or `MetaSave.es3`), it copies it unchanged as `…_original.es3`.
-- Before every save the current file is backed up again (unless you switch off "Back up automatically before every save"). Before a restore it is always backed up.
+- Before every save the current file is backed up again, and the saved state right after (unless you switch off "Back up automatically before every save"). Before a restore it is always backed up.
+- New states the game writes are backed up at start, on refresh and, while the editor is open, as soon as the game saves (only once per state). A save the game deletes can be restored from these backups.
 - Saving only happens when R.E.P.O. is closed and the game has not changed the file since it was loaded.
 - After encrypting, the file is decrypted again as a check; only then is it saved, in one step (no half-written files).
 - Only values you changed are touched; the game's own `BACKUP` files are never modified.

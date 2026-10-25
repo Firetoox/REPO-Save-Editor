@@ -16,7 +16,7 @@ Windows-App, um Spielstände von **R.E.P.O.** zu sichern, zu bearbeiten und wied
 | Spieler | Alle 13 Upgrades pro Spieler (Health, Stamina, Extra Jump, Tumble Launch, Range, Strength, Throw, Sprint Speed, Crouch Rest, Tumble Wings, Tumble Climb, Death Head Battery, Map Player Count), aktuelle HP, Krone |
 | Waffen & Items | Alle 59 Items des Spiels in den Truck legen oder entfernen, Akkus aufladen |
 | Profile | Mitgelieferte Schnellprofile und eigene, auf jeden Spielstand anwendbar |
-| Backups | Jedes Backup mit dem aktuellen Stand vergleichen, mit einem Klick wiederherstellen |
+| Backups | Alle Backups aller Spielstände in einer Liste, mit Teamname, Level und Geld; mit einem Klick wiederherstellen, auch Spielstände, die das Spiel gelöscht hat; jedes Backup mit dem aktuellen Stand vergleichen |
 | Experte | Den kompletten Spielstand als JSON bearbeiten |
 | Sprache | Deutsch oder Englisch, Umschalter **DE \| EN** oben rechts; die Wahl bleibt gespeichert (ohne Wahl gilt die Windows-Sprache) |
 | Cosmetics (global) | Einzelne, gefilterte oder alle 547 Cosmetics freischalten; filtern nach Kategorie, Typ, Seltenheit (Common bis Ultra Rare) und Status; Cosmetics mit fester Farbe sind markiert |
@@ -47,10 +47,19 @@ Deinstallieren: Windows-Einstellungen → Apps. Deine Backups und Profile bleibe
 
 Neue Items erscheinen beim Laden des nächsten Levels im Truck. Im Mehrspielermodus zählt nur der Spielstand des Hosts; Mitspieler werden über ihre Steam-ID zugeordnet. Cosmetics gelten für alle Spielstände auf deinem PC, nicht pro Spielstand.
 
+### Wenn das Spiel einen Spielstand löscht
+
+R.E.P.O. löscht einen Spielstand, wenn das ganze Team stirbt. Die Backups des Editors bleiben: Gelöschte Spielstände erscheinen links unter **Gelöscht**, und **Alle Backups** listet jedes Backup jedes Spielstands mit Teamname, Level und Geld. **Wiederherstellen** legt den gelöschten Spielstand neu an, und er erscheint wieder im Spiel.
+
+Der Editor sichert jeden neuen Stand eines Spielstands beim Start, beim Aktualisieren der Liste, nach dem Speichern und, solange er offen ist, jedes Mal, wenn das Spiel speichert. Lass ihn beim Spielen offen, dann ist jedes erreichte Level gesichert.
+
+![Alle Backups, mit einem gelöschten Spielstand](docs/screenshots/de/backups.png)
+
 ## Sicherheit und Datenschutz
 
 - Sobald der Editor einen Spielstand zum ersten Mal sieht, sichert er ihn (und `MetaSave.es3`) unverändert als `…_original.es3`.
-- Vor jedem Speichern wird der aktuelle Stand erneut gesichert (außer du schaltest „Vor jedem Speichern automatisch sichern“ aus). Vor dem Wiederherstellen wird immer gesichert.
+- Vor jedem Speichern wird der aktuelle Stand erneut gesichert, direkt danach auch der gespeicherte (außer du schaltest „Vor jedem Speichern automatisch sichern“ aus). Vor dem Wiederherstellen wird immer gesichert.
+- Neue Stände des Spiels werden beim Start, beim Aktualisieren und, solange der Editor offen ist, sobald das Spiel speichert, gesichert (jeder Stand nur einmal). Einen Spielstand, den das Spiel löscht, stellst du aus diesen Backups wieder her.
 - Gespeichert wird nur, wenn R.E.P.O. geschlossen ist und das Spiel die Datei seit dem Laden nicht verändert hat.
 - Nach dem Verschlüsseln wird die Datei testweise wieder entschlüsselt; erst dann wird sie in einem Schritt gespeichert (keine halb geschriebenen Dateien).
 - Nur geänderte Werte werden angefasst; die eigenen `BACKUP`-Dateien des Spiels bleiben unverändert.

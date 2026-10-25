@@ -12,6 +12,7 @@ const assert = require('assert');
 const { test, before, after } = require('node:test');
 const { testFiles, startEditor } = require('./helpers');
 const { maskPaths } = require('../lib/server');
+const es3 = require('../lib/es3');
 const { UNKNOWN_UNLOCK } = require('./fixtures');
 
 const files = testFiles(process.argv.slice(2), 'Only run with copies: node test/api.js <savesDirCopy> <metaSaveCopy> <workDir>');
@@ -80,6 +81,44 @@ test('Saving changes only the wanted values (upgrade prices)', async () => {
   keys.forEach(k => assert.strictEqual(dd(written).itemsUpgradesPurchased[k], 0));
   dd(written).itemsUpgradesPurchased = dd(original).itemsUpgradesPurchased;
   assert.deepStrictEqual(written, original);
+});
+
+test('After saving, the new state is backed up too', async () => {
+  const s = await ok('GET', '/api/save?id=' + id);
+  s.model.run.level += 1;
+  await ok('POST', '/api/save?id=' + id, { hash: s.hash, model: s.model });
+  const afterSave = (await ok('GET', '/api/backups?id=' + id)).filter(b => b.reason === 'after-save').map(b => b.file).sort();
+  assert.ok(afterSave.length, 'no after-save backup');
+  assert.ok(fs.readFileSync(path.join(files.work, 'backups', id, afterSave.pop())).equals(fs.readFileSync(file)));
+});
+
+test('Refreshing the list backs up a save that changed since its last backup, once', async () => {
+  const codec = es3.codec(files.password);
+  const json = files.read(file);
+  dd(json).runStats.level = 77; // as if the game had saved a new level
+  fs.writeFileSync(file, codec.writeSave(json, { encrypted: true }));
+  const first = await ok('POST', '/api/rescan', {});
+  assert.ok(first.updated.includes(id), JSON.stringify(first.updated));
+  const snaps = (await ok('GET', '/api/backups?id=' + id)).filter(b => b.reason === 'snapshot').map(b => b.file).sort();
+  assert.ok(fs.readFileSync(path.join(files.work, 'backups', id, snaps.pop())).equals(fs.readFileSync(file)));
+  assert.ok(!(await ok('POST', '/api/rescan', {})).updated.includes(id), 'the same state again');
+});
+
+test('While the editor runs, every new state the game writes is backed up', async () => {
+  const quick = await startEditor(files, { watchDelayMs: 200 });
+  try {
+    const revision = (await quick.ok('GET', '/api/status')).savesRevision;
+    const json = files.read(file);
+    dd(json).runStats.level = 78;
+    const written = es3.codec(files.password).writeSave(json, { encrypted: true });
+    fs.writeFileSync(file, written);
+    const backedUp = () => fs.readdirSync(path.join(files.work, 'backups', id)).some(f => fs.readFileSync(path.join(files.work, 'backups', id, f)).equals(written));
+    for (let i = 0; i < 50 && !backedUp(); i++) await new Promise(r => setTimeout(r, 100));
+    assert.ok(backedUp(), 'the new state was not backed up');
+    assert.ok((await quick.ok('GET', '/api/status')).savesRevision > revision, 'the page is told about the change');
+  } finally {
+    await quick.editor.close();
+  }
 });
 
 test('Inventory: a deleted entry is removed from the save', async () => {
@@ -299,6 +338,39 @@ test('Cosmetics: with the built-in list after a game update nothing is locked', 
   } finally {
     await updated.editor.close();
     fs.rmSync(manifest, { force: true });
+  }
+});
+
+test('A save the game deleted is listed with its team name and comes back from a backup', async () => {
+  const victim = (await ok('GET', '/api/saves')).find(s => s.id !== id && s.ok);
+  const dir = path.join(files.savesDir, victim.id);
+  const main = path.join(dir, victim.id + '.es3');
+  const keep = fs.readFileSync(main);
+  fs.rmSync(dir, { recursive: true, force: true }); // what R.E.P.O. does when the whole team dies
+  try {
+    const listed = (await ok('GET', '/api/deleted-saves')).find(d => d.id === victim.id);
+    assert.ok(listed && listed.team === victim.team && listed.count > 0, JSON.stringify(listed));
+    const all = await ok('GET', '/api/all-backups');
+    const group = all.find(g => g.id === victim.id);
+    assert.deepStrictEqual([group.exists, group.current, group.team], [false, null, victim.team]);
+    const mine = all.find(g => g.id === id);
+    assert.ok(mine.exists && mine.current.hash && mine.backups.length, 'existing saves are listed with their hash');
+    const newest = group.backups.find(b => b.ok);
+    assert.strictEqual((await call('POST', '/api/restore-deleted?id=' + victim.id, { file: '../x.es3' })).status, 400);
+    const ownBackup = mine.backups.find(b => b.source === 'editor').file;
+    assert.strictEqual((await call('POST', '/api/restore-deleted?id=' + id, { file: ownBackup })).status, 409, 'the save still exists');
+    gameRunning = true;
+    try {
+      assert.strictEqual((await call('POST', '/api/restore-deleted?id=' + victim.id, { file: newest.file })).status, 409, 'game running');
+    } finally {
+      gameRunning = false;
+    }
+    await ok('POST', '/api/restore-deleted?id=' + victim.id, { file: newest.file });
+    assert.ok(fs.readFileSync(main).equals(fs.readFileSync(path.join(files.work, 'backups', victim.id, newest.file))));
+    assert.ok((await ok('GET', '/api/saves')).some(s => s.id === victim.id));
+    assert.ok(!(await ok('GET', '/api/deleted-saves')).some(d => d.id === victim.id));
+  } finally {
+    if (!fs.existsSync(main)) { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(main, keep); }
   }
 });
 
