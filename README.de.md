@@ -1,4 +1,4 @@
-# REPO Save Editor
+# <img src="build/icon.png" alt="" width="40" height="40" align="center"> REPO Save Editor
 
 Windows-App, um Spielstände von **R.E.P.O.** zu sichern, zu bearbeiten und wiederherzustellen: Run-Werte, Spieler-Upgrades, Waffen und Items im Truck sowie Cosmetics.
 

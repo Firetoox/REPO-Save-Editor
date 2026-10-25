@@ -73,6 +73,13 @@ test('ES3: damaged, foreign and oversized files', () => {
   assert.throws(() => files.decrypt(Buffer.concat([KAT_IV, cipher.update(bomb), cipher.final()])), code('es3.invalid.unpacked'));
 });
 
+test('ES3: a byte order mark is skipped, unreadable content is a clear 422', () => {
+  const bom = files.readSave(Buffer.from('\uFEFF{"a":{"__type":"int","value":1}}', 'utf8'));
+  assert.deepStrictEqual([bom.json.a.value, bom.encrypted], [1, false]);
+  assert.throws(() => files.readSave(Buffer.from('{ broken')), e => e.status === 422 && e.code === 'es3.invalid.notJson');
+  assert.throws(() => files.readSave(files.encrypt('{ broken')), e => e.status === 422 && e.code === 'es3.invalid.notJson');
+});
+
 test('ES3: numbers JavaScript cannot hold exactly are refused', () => {
   assert.deepStrictEqual(es3.parseJson('{"a":1,"b":-2.5,"c":"12345678901234567890","d":9007199254740991}'), { a: 1, b: -2.5, c: '12345678901234567890', d: 9007199254740991 });
   assert.deepStrictEqual(es3.parseJson('{"x\\"1":"y\\\\","n":[1e3]}'), { 'x"1': 'y\\', n: [1000] });

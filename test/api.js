@@ -32,6 +32,8 @@ let gameRunning = false;
 const opened = [];
 const dd = json => json.dictionaryOfDictionaries.value;
 let editor, port, call, ok, state, id, file;
+/** Hash of the save as the editor reads it now (what the page would have loaded). */
+const saveHash = async () => (await ok('GET', '/api/save?id=' + id)).hash;
 
 before(async () => {
   ({ editor, port, call, ok } = await startEditor(files, {
@@ -61,6 +63,7 @@ test('State: lists, limits, game folder and password', async () => {
   assert.ok(state.catalog.run.every(f => f.key && f.label && f.hint !== undefined));
   assert.strictEqual(state.gameDir, files.gameDir);
   assert.deepStrictEqual(state.password, { found: true }, 'password from the game file');
+  assert.strictEqual(state.cosmeticsLockable, true, 'no game update since the cosmetic list was made');
   assert.ok(state.game.testedBuild);
   assert.ok(state.pathAliases.some(([, to]) => to === '%USERPROFILE%'));
 });
@@ -107,10 +110,10 @@ test('Nothing is written while the game is running (409)', async () => {
     const attempts = [
       ['POST', '/api/save?id=' + id, { hash: s.hash, model: s.model }],
       ['POST', '/api/raw?id=' + id, { hash: s.hash, text: JSON.stringify(files.read(file)) }],
-      ['POST', '/api/restore?id=' + id, { source: list[0].source, file: list[0].file }],
+      ['POST', '/api/restore?id=' + id, { source: list[0].source, file: list[0].file, hash: s.hash }],
       ['POST', '/api/duplicate?id=' + id, { team: 'x' }],
       ['POST', '/api/meta', { hash: m.hash, unlocks: [] }],
-      ['POST', '/api/meta-restore', { source: 'game', file: 'MetaSave.bak' }]
+      ['POST', '/api/meta-restore', { source: 'game', file: 'MetaSave.bak', hash: m.hash }]
     ];
     for (const [method, p, body] of attempts) assert.strictEqual((await call(method, p, body)).status, 409, p);
     // the check itself failed (e.g. tasklist blocked): unknown counts as "do not write"
@@ -149,16 +152,16 @@ test('Backups: unique names, restore from editor and game backups', async () => 
   assert.notStrictEqual(a.backup, b.backup);
   const list = await ok('GET', '/api/backups?id=' + id);
   const orig = list.find(x => x.reason === 'original');
-  const r = await ok('POST', '/api/restore?id=' + id, { source: 'editor', file: orig.file });
+  const r = await ok('POST', '/api/restore?id=' + id, { source: 'editor', file: orig.file, hash: await saveHash() });
   assert.ok(/_before-restore\.es3$/.test(r.backup));
   assert.ok(fs.readFileSync(file).equals(fs.readFileSync(path.join(files.work, 'backups', id, orig.file))));
   const game = list.find(x => x.source === 'game');
   if (game) {
     assert.strictEqual(game.reason, 'game');
-    await ok('POST', '/api/restore?id=' + id, { source: 'game', file: game.file });
+    await ok('POST', '/api/restore?id=' + id, { source: 'game', file: game.file, hash: await saveHash() });
     assert.ok(fs.readFileSync(file).equals(fs.readFileSync(path.join(files.savesDir, id, game.file))));
   }
-  await ok('POST', '/api/restore?id=' + id, { source: 'editor', file: orig.file });
+  await ok('POST', '/api/restore?id=' + id, { source: 'editor', file: orig.file, hash: await saveHash() });
   // backups named with German reasons
   const old = path.join(files.work, 'backups', id, '2026-01-01_00-00-00-000_vor-schreiben.es3');
   fs.copyFileSync(file, old);
@@ -168,6 +171,19 @@ test('Backups: unique names, restore from editor and game backups', async () => 
   } finally {
     fs.unlinkSync(old);
   }
+});
+
+test('Restoring refuses a file that changed since it was loaded (409), nothing is written', async () => {
+  const list = await ok('GET', '/api/backups?id=' + id);
+  const bytes = fs.readFileSync(file);
+  assert.strictEqual((await call('POST', '/api/restore?id=' + id, { source: list[0].source, file: list[0].file })).status, 400, 'hash missing');
+  const r = await call('POST', '/api/restore?id=' + id, { source: list[0].source, file: list[0].file, hash: 'outdated' });
+  assert.deepStrictEqual([r.status, r.data.reason], [409, 'changed']);
+  assert.ok(fs.readFileSync(file).equals(bytes));
+  const metaBytes = fs.readFileSync(files.metaFile);
+  const m = await call('POST', '/api/meta-restore', { source: 'game', file: 'MetaSave.bak', hash: 'outdated' });
+  assert.strictEqual(m.status, fs.existsSync(files.metaFile.replace(/\.es3$/i, '.bak')) ? 409 : 404);
+  assert.ok(fs.readFileSync(files.metaFile).equals(metaBytes));
 });
 
 test('Invalid IDs and file names are refused', async () => {
@@ -212,6 +228,24 @@ test('Expert mode: read, write, refuse broken JSON and unknown formats', async (
   assert.strictEqual(dd(files.read(file)).runStats.level, 42);
 });
 
+test('Expert mode keeps the structure of the save (values may change, sections may not go)', async () => {
+  const raw = await ok('GET', '/api/raw?id=' + id);
+  const bytes = fs.readFileSync(file);
+  const tryWith = async change => {
+    const json = JSON.parse(raw.text);
+    change(json);
+    return call('POST', '/api/raw?id=' + id, { hash: raw.hash, text: JSON.stringify(json) }, { 'X-REPO-Lang': 'en' });
+  };
+  const topKey = Object.keys(JSON.parse(raw.text)).find(k => k !== 'dictionaryOfDictionaries');
+  let r = await tryWith(j => { delete j[topKey]; });
+  assert.deepStrictEqual([r.status, r.data.error.startsWith('"' + topKey + '" is missing')], [400, true], r.data.error);
+  r = await tryWith(j => { delete dd(j).runStats; });
+  assert.deepStrictEqual([r.status, /dictionaryOfDictionaries\.runStats/.test(r.data.error)], [400, true], r.data.error);
+  r = await tryWith(j => { j[topKey].__type = 'System.Object'; });
+  assert.deepStrictEqual([r.status, /The type of/.test(r.data.error)], [400, true], r.data.error);
+  assert.ok(fs.readFileSync(file).equals(bytes), 'nothing written');
+});
+
 test('Cosmetics: unlocking all changes only cosmeticUnlocks, order stays', async () => {
   const original = files.read(files.metaFile);
   const m = await ok('GET', '/api/meta');
@@ -244,10 +278,28 @@ test('Cosmetics: restore the original', async () => {
   assert.ok(orig, 'original backup missing');
   const gameCopy = files.metaFile.replace(/\.es3$/i, '.bak'); // the game's own MetaSave.bak, if present
   assert.strictEqual(list.some(b => b.source === 'game'), fs.existsSync(gameCopy));
-  await ok('POST', '/api/meta-restore', { source: 'editor', file: orig.file });
+  await ok('POST', '/api/meta-restore', { source: 'editor', file: orig.file, hash: (await ok('GET', '/api/meta')).hash });
   const restored = files.read(files.metaFile).cosmeticUnlocks.value;
   assert.strictEqual(new Set(restored.filter(i => i < 547)).size, orig.unlocked);
   assert.ok(fs.readFileSync(files.metaFile).equals(fs.readFileSync(path.join(files.work, 'backups', 'MetaSave', orig.file))));
+});
+
+test('Cosmetics: with the built-in list after a game update nothing is locked', { skip: !files.synthetic && 'needs the synthetic game folder' }, async () => {
+  // a newer Steam build than the one the built-in list was made for
+  const manifest = path.join(files.gameDir, '..', '..', 'appmanifest_3241660.acf');
+  fs.writeFileSync(manifest, '"AppState"\n{\n\t"buildid"\t\t"99999999"\n}\n');
+  const updated = await startEditor(files);
+  try {
+    const st = await updated.ok('GET', '/api/state');
+    assert.deepStrictEqual([st.cosmetics.source, st.cosmeticsLockable], ['builtin', false]);
+    const m = await updated.ok('GET', '/api/meta');
+    const r = await updated.ok('POST', '/api/meta', { hash: m.hash, unlocks: [] });
+    assert.deepStrictEqual(files.read(files.metaFile).cosmeticUnlocks.value, m.unlocks, 'every unlock kept');
+    assert.strictEqual(r.unlocked, new Set(m.unlocks.filter(i => i >= 0 && i < 547)).size);
+  } finally {
+    await updated.editor.close();
+    fs.rmSync(manifest, { force: true });
+  }
 });
 
 test('Profiles: save, clean up, read', async () => {
@@ -269,6 +321,21 @@ test('Settings: automatic backup and language are kept across restarts', async (
     await second.editor.close();
   }
   await ok('POST', '/api/settings', { autoBackup: true, language: null });
+});
+
+test('A failed write (disk full) leaves the file and no temp file behind', async () => {
+  const write = fs.writeSync;
+  const settingsFile = path.join(files.work, 'data', 'settings.json');
+  const settingsBefore = fs.readFileSync(settingsFile);
+  fs.writeSync = () => { throw Object.assign(new Error('no space'), { code: 'ENOSPC' }); };
+  try {
+    const r = await call('POST', '/api/settings', { autoBackup: true }, { 'X-REPO-Lang': 'en' });
+    assert.deepStrictEqual([r.status, r.data.error], [500, 'No free disk space left.']);
+  } finally {
+    fs.writeSync = write;
+  }
+  assert.ok(fs.readFileSync(settingsFile).equals(settingsBefore));
+  assert.ok(!fs.readdirSync(path.join(files.work, 'data')).some(f => f.endsWith('.editor-tmp')));
 });
 
 test('Saving waits a moment while another program holds the file', async () => {

@@ -97,7 +97,7 @@ before(async () => {
   let target;
   for (let i = 0; i < 60 && !target; i++) {
     await sleep(250);
-    try { target = (await (await fetch('http://127.0.0.1:' + port + '/json')).json()).find(t => t.type === 'page' && /^http:\/\/127\.0\.0\.1:\d+\/#token=[0-9a-f]{48}$/.test(t.url)); } catch { /* not up yet */ }
+    try { target = (await (await fetch('http://127.0.0.1:' + port + '/json')).json()).find(t => t.type === 'page' && /^http:\/\/127\.0\.0\.1:\d+\/(#token=[0-9a-f]{48})?$/.test(t.url)); } catch { /* not up yet */ }
   }
   if (!target) throw new Error('editor page not found');
   ws = new WebSocket(target.webSocketDebuggerUrl);
@@ -175,7 +175,16 @@ test('Typing a number and clicking a button right away: both apply', async () =>
   await cdp('Input.insertText', { text: '777' });
   await until('document.activeElement && document.activeElement.value === "777"', 'typed text in the field'); // CDP input is asynchronous
   const at = await js('const b = document.querySelector("[data-act=run-add][data-k=level][data-add=\\"1\\"]").getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }');
-  for (const type of ['mousePressed', 'mouseReleased']) await cdp('Input.dispatchMouseEvent', { type, x: at.x, y: at.y, button: 'left', clickCount: 1 });
+  const press = async () => {
+    for (const type of ['mousePressed', 'mouseReleased']) await cdp('Input.dispatchMouseEvent', { type, x: at.x, y: at.y, button: 'left', clickCount: 1 });
+  };
+  await press();
+  // The offscreen window now and then misses a synthetic mouse event completely: then nothing at all
+  // has changed (the field still has focus, the number is not applied) and the click is repeated once.
+  // A click lost after the number was applied still fails below.
+  const untouched = 'S.edit.run.currency !== 777 && S.edit.run.level === ' + level + ' && document.activeElement.value === "777"';
+  for (let i = 0; i < 10 && await js('return ' + untouched); i++) await sleep(100);
+  if (await js('return ' + untouched)) await press();
   try {
     await until('S.edit.run.currency === 777 && S.edit.run.level === ' + (level + 1), 'typed number and click both applied');
   } catch (e) {
@@ -455,6 +464,9 @@ test('Switching language: English UI without German leftovers, choice is stored'
   await click('[data-act=view-cosmetics]');
   await until('S.meta && document.querySelectorAll(".coscard").length > 100', 'cosmetics');
   await scan('cosmetics');
+  await js('S.server.cosmeticsLockable = false; render(); return true');
+  await scan('cosmetics, built-in list after an update');
+  await js('S.server.cosmeticsLockable = true; render(); return true');
   const cid = await js('return COS().find(c => !S.meta.equipped.includes(c.id)).id');
   await click('[data-act=cos-toggle][data-cid="' + cid + '"]');
   if (!await js('return metaChanges().length')) throw new Error('cosmetic toggle made no change');
@@ -478,6 +490,27 @@ test('Password: read from the (fake) game file, notice when it is missing', asyn
   // simulate a missing game: the banner explains what to do; with the password it is gone again
   const shown = await js('const keep = S.server.password; S.server.password = { found: false, reason: "noGame" }; render(); const ok = document.body.innerText.includes(t("pw.noGame")); S.server.password = keep; render(); return ok && !document.body.innerText.includes(t("pw.noGame"))');
   if (!shown) throw new Error('notice missing or stays');
+});
+
+test('Cosmetics with the built-in list after a game update: saved unlocks cannot be locked', async () => {
+  await click('[data-act=view-cosmetics]');
+  await until('S.meta && document.querySelectorAll(".coscard").length > 100', 'cosmetics');
+  const r = await js(`S.server.cosmeticsLockable = false; render();
+    const id = S.meta.unlocks.find(u => !S.meta.equipped.includes(u) && COS().some(c => c.id === u));
+    const card = document.querySelector('[data-act=cos-toggle][data-cid="' + id + '"]');
+    const out = { notice: document.body.innerText.includes(t('cos.noLock')), locked: !!card && card.disabled };
+    ACTIONS['cos-toggle']({ cid: String(id) });
+    out.unchanged = metaChanges().length === 0;
+    S.server.cosmeticsLockable = true; render();
+    return out`);
+  if (!r.notice || !r.locked || !r.unchanged) throw new Error(JSON.stringify(r));
+});
+
+test('Session token: not left in the address, a reload still works', async () => {
+  if (await js('return location.href.includes("token") || location.hash !== ""')) throw new Error('token still in the address');
+  await cdp('Page.reload');
+  await until('typeof S !== "undefined" && S.server && S.edit && S.meta', 'reloaded page');
+  if (await js('return location.href.includes("token")')) throw new Error('token back in the address');
 });
 
 test('No JavaScript or CSP errors', async () => { if (errors.length) throw new Error(errors.join(' | ')); });

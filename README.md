@@ -1,4 +1,4 @@
-# REPO Save Editor
+# <img src="build/icon.png" alt="" width="40" height="40" align="center"> REPO Save Editor
 
 Windows app to back up, edit and restore save games of **R.E.P.O.** – run values, player upgrades, weapons and items in the truck, and cosmetics.
 

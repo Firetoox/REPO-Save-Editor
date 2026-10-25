@@ -302,7 +302,19 @@ const S = {
   modal: null, modalReturn: null, toast: null, busy: false, error: null
 };
 
-const TOKEN = new URLSearchParams(location.hash.slice(1)).get('token') || '';
+// The session token arrives in the URL fragment. It is taken out of the address at once (so it does not
+// stay in a normal browser's history with `npm run serve`) and kept in this tab's sessionStorage, so a
+// reload still works.
+const TOKEN = (() => {
+  const KEY = 'repo-editor-token';
+  const fromUrl = new URLSearchParams(location.hash.slice(1)).get('token');
+  if (fromUrl) {
+    try { sessionStorage.setItem(KEY, fromUrl); } catch { /* storage blocked: a reload needs the editor's link again */ }
+    history.replaceState(null, '', location.pathname + location.search);
+    return fromUrl;
+  }
+  try { return sessionStorage.getItem(KEY) || ''; } catch { return ''; }
+})();
 const NO_RENDER = Symbol('no render');
 const LANGUAGES = ['de', 'en'];
 const LOCALES = { de: 'de-DE', en: 'en-US' };
@@ -565,6 +577,9 @@ const TEXTS = {
   'cos.fixed': ['feste Farbe', 'fixed color'],
   'cos.fixedTitle': ['Eigene Textur, lässt sich vermutlich nicht umfärben', 'Has its own texture; probably cannot be recolored'],
   'cos.equippedTitle': ['Ausgerüstete Cosmetics bleiben freigeschaltet', 'Equipped cosmetics stay unlocked'],
+  'cos.noLock': ['Die Cosmetic-Liste ließ sich nicht aus den Spieldateien lesen, und das Spiel wurde seit dieser Editor-Version aktualisiert. Die Namen stammen aus der mitgelieferten Liste und passen eventuell nicht mehr. Freischalten geht weiterhin; Sperren ist ausgeschaltet, damit keine falschen Cosmetics verloren gehen.',
+    'The cosmetic list could not be read from the game files, and the game was updated since this editor version. The names come from the built-in list and may no longer match. Unlocking still works; locking is turned off so that no wrong cosmetics are lost.'],
+  'cos.noLockTitle': ['Sperren ist ausgeschaltet (mitgelieferte Liste nach einem Spiel-Update)', 'Locking is turned off (built-in list after a game update)'],
   'cos.toUnlock': ['wird freigeschaltet', 'will be unlocked'],
   'cos.toLock': ['wird gesperrt', 'will be locked'],
   'cos.asideLabel': ['Änderungen an den Cosmetics', 'Changes to cosmetics'],
@@ -1471,7 +1486,9 @@ function viewCosmetics() {
         : html`<span class="st ${changedClass(changed, 'dim')}">${svg(I.lock, 12)}${t(changed ? 'cos.willLock' : 'cos.showOff')}</span>`;
     const rar = c.rarity != null ? html`<span class="rar" style="color: ${RARITY_COLORS[c.rarity]}; background: ${tint(RARITY_COLORS[c.rarity], 14)}">${rarityName(c.rarity)}</span>` : '';
     const fixed = c.colorable === false ? html`<span class="rar fixed" title="${t('cos.fixedTitle')}">${t('cos.fixed')}</span>` : '';
-    const lockedTitle = eq ? html` disabled title="${t('cos.equippedTitle')}"` : '';
+    // built-in list after a game update: saved unlocks cannot be taken back (see cosmeticsLockable)
+    const keep = !eq && !S.server.cosmeticsLockable && before.has(c.id);
+    const lockedTitle = eq ? html` disabled title="${t('cos.equippedTitle')}"` : keep ? html` disabled title="${t('cos.noLockTitle')}"` : '';
     return html`<button class="coscard${isOn ? ' on' : ''}${changed ? ' changed' : ''}" data-act="cos-toggle" data-cid="${c.id}"${lockedTitle} aria-pressed="${isOn ? 'true' : 'false'}">
       <span class="strong">${c.name}</span>
       <span class="small muted hstack gap-6"><span class="sq" style="background: ${cosColor(c.category)}"></span>${c.type}</span>
@@ -1496,6 +1513,7 @@ function viewCosmetics() {
       <button class="btn primary" data-act="cos-open-write"${attr('disabled', !mc.length || S.busy)}>${t('btn.write')}${mc.length ? html` <span class="badge">${mc.length}</span>` : ''}</button>
     </div></div></section>
     <div class="body"><div class="content">
+      ${S.server.cosmeticsLockable ? '' : notice('warn', t('cos.noLock'))}
       <div class="hstack gap-12">${searchBox('cos-search', 'cos-search', f.q, t('cos.search'), t('cos.searchLabel'))}
         <label class="small muted hstack">${t('cos.type')} <select class="select" data-fk="cos-type" data-sel="cos-type">
           <option value="">${t('cos.allTypes')}</option>${types.map(ty => html`<option${attr('selected', ty === f.type)}>${ty}</option>`)}</select></label></div>
@@ -1800,7 +1818,7 @@ const doRaw = () => runWrite(async () => {
 }, 'msg.notWritten', reloadSave);
 
 const doRestore = b => runWrite(async () => {
-  const r = await api('POST', '/api/restore' + idQuery(S.saveId), { source: b.source, file: b.file });
+  const r = await api('POST', '/api/restore' + idQuery(S.saveId), { source: b.source, file: b.file, hash: S.loaded.hash });
   return t('msg.restored', { file: r.backup });
 }, 'msg.notRestored', reloadSave);
 
@@ -1810,7 +1828,7 @@ const doCosWrite = () => runWrite(async () => {
 }, 'msg.notWritten', reloadMeta);
 
 const doMetaRestore = b => runWrite(async () => {
-  const r = await api('POST', '/api/meta-restore', { source: b.source, file: b.file });
+  const r = await api('POST', '/api/meta-restore', { source: b.source, file: b.file, hash: S.meta.hash });
   return t('msg.cosRestored', { file: r.backup });
 }, 'msg.notRestored', reloadMeta);
 
@@ -2040,6 +2058,7 @@ const ACTIONS = {
   'cos-toggle': d => {
     const id = Number(d.cid);
     if (S.meta.equipped.includes(id)) return;
+    if (!S.server.cosmeticsLockable && S.meta.unlocks.includes(id)) return;
     if (S.metaEdit.has(id)) S.metaEdit.delete(id); else S.metaEdit.add(id);
   },
   'cos-all': () => { COS().forEach(c => S.metaEdit.add(c.id)); },
