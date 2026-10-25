@@ -49,7 +49,7 @@ New items appear in the truck when the next level loads. In multiplayer only the
 
 ### When the game deletes a save
 
-R.E.P.O. deletes a save when the whole team dies. The editor keeps its backups: deleted saves show up on the left under **Deleted**, and **All backups** lists every backup of every save with the team name, level and money. **Restore** creates the deleted save again, and it shows up in the game again.
+R.E.P.O. deletes a save when the whole team dies. The editor keeps its backups: deleted saves show up on the left under **Deleted**, and **All backups** lists every backup of every save with the team name, level and money. **Restore** creates the deleted save again, so it shows up in the game.
 
 The editor backs up every new state of a save when it starts, when you refresh the list, after saving and, while it is open, every time the game saves. Keep it open while you play, and every level reached is backed up.
 
