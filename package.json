@@ -30,7 +30,7 @@
     "start": "electron .",
     "serve": "node server.js",
     "postinstall": "node node_modules/electron/install.js",
-    "test": "node --test test/unit.js test/roundtrip.js test/api.js",
+    "test": "node --test test/unit.js test/roundtrip.js test/api.js test/site.js",
     "test:ui": "node test/ui-hidden.js",
     "lint": "node scripts/lint.js",
     "screenshots": "node test/ui-hidden.js --lang de --shots docs/screenshots/de && node test/ui-hidden.js --lang en --shots docs/screenshots/en",
