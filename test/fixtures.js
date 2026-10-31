@@ -177,9 +177,12 @@ function fakeAssembly(strings) {
 /**
  * A tiny stand-in for the game's resources.assets with Item records in the layout lib/catalog.js
  * scans for (see scanGameItems), separated by unrelated bytes, plus decoys that only look similar.
- * @param {{ key: string, label: string, disabled?: boolean, max: number }[]} items
+ * `newer`: the layout since build 26294889 (status before `disabled`, bool cachedFinalized after
+ * the prefab path).
+ * @param {{ key: string, label: string, disabled?: boolean, wip?: boolean, max: number, prefab?: string }[]} items
+ * @param {{ newer?: boolean }} [opts]
  */
-function fakeResources(items) {
+function fakeResources(items, { newer = false } = {}) {
   const str = s => {
     const text = Buffer.from(s, 'utf8');
     const out = Buffer.alloc(4 + text.length + (4 - text.length % 4) % 4); // length, text, padding
@@ -190,16 +193,18 @@ function fakeResources(items) {
   const int = v => { const b = Buffer.alloc(4); b.writeInt32LE(v, 0); return b; };
   const filler = n => Buffer.alloc(n, 0x5a);
   const parts = [filler(64), str('Item text in a dialog'), int(7), filler(32), Buffer.from('Item without a length prefix')];
-  for (const it of items) {
+  const pptr = (fileID, pathID) => { const b = Buffer.alloc(12); b.writeInt32LE(fileID, 0); b.writeBigInt64LE(BigInt(pathID), 4); return b; };
+  items.forEach((it, i) => {
     parts.push(
-      str(it.key), int(it.disabled ? 1 : 0), str(it.label),
+      str(it.key), ...(newer ? [int(it.wip ? 0 : 1)] : []), int(it.disabled ? 1 : 0), str(it.label),
       filler(24), // other fields of the asset
-      str('Items/' + it.key),
-      int(0), int(0), int(0), int(0), Buffer.alloc(8), // three int32, PPtr (fileID + pathID)
+      str(it.key), str(it.prefab || 'Items/' + it.key), // PrefabRef: prefab name and path
+      pptr(0, 0), ...(newer ? [int(it.wip ? 0 : 1)] : []), // bundle, cachedFinalized
+      pptr(i % 3, 14000 + i), // price asset
       int(it.max),
       filler(40)
     );
-  }
+  });
   return Buffer.concat(parts);
 }
 

@@ -1,5 +1,7 @@
 # <img src="build/icon.png" alt="" width="40" height="40" align="top"> REPO Save Editor
 
+**✅ Compatible with the Sunstone Update** of R.E.P.O. (game version 0.5.0), from editor version 1.1.2: the new items and cosmetics are included, and edited saves are tested in game.
+
 Windows app to back up, edit and restore save games of **R.E.P.O.** – run values, player upgrades, weapons and items in the truck, and cosmetics.
 
 [Deutsch](README.de.md)
@@ -14,12 +16,12 @@ Windows app to back up, edit and restore save games of **R.E.P.O.** – run valu
 |---|---|
 | Run & team | Team name, level, money, lives, charging station, total haul, reset the upgrade purchase counters that drive shop prices |
 | Players | All 13 upgrades per player (Health, Stamina, Extra Jump, Tumble Launch, Range, Strength, Throw, Sprint Speed, Crouch Rest, Tumble Wings, Tumble Climb, Death Head Battery, Map Player Count), current HP, crown |
-| Weapons & items | Put any of the game's 59 items into the truck or remove them, recharge batteries |
+| Weapons & items | Put any of the game's 60 items into the truck or remove them, recharge batteries; also the 3 items the game marks as unfinished (WIP), labeled and with a warning |
 | Profiles | Built-in quick profiles and your own, applicable to any save |
 | Backups | All backups of all saves in one list, with team name, level and money; restore with one click, also saves the game has deleted; compare any backup with the current save |
 | Expert | Edit the complete save as JSON |
 | Language | German or English, switch with **DE \| EN** at the top right; the choice is remembered (without a choice the Windows language is used) |
-| Cosmetics (global) | Unlock single, filtered or all 547 cosmetics; filter by category, type, rarity (Common to Ultra Rare) and status; cosmetics with a fixed color are marked |
+| Cosmetics (global) | Unlock single, filtered or all 557 cosmetics; filter by category, type, rarity (Common to Ultra Rare) and status; cosmetics with a fixed color are marked |
 
 Also: **Duplicate** creates a new slot from a save, e.g. to try things safely. Every change is listed with "before → after" and can be undone individually before anything is saved.
 
@@ -89,8 +91,8 @@ Optional overrides in `%APPDATA%\REPO Save Editor\config.json` (restart the edit
 
 ## Status
 
-- Last checked against Steam build `23363152` of R.E.P.O. After a game update the info dialog shows a hint, and the item and cosmetic lists are re-read from the game files automatically. If the save format itself changes, the editor refuses to read a save instead of damaging it.
-- Tested in game with this build: edited saves load, and every run value, every player upgrade (including current HP and "Full heal"), every weapon and item in the truck and all 547 cosmetics work.
+- Last checked against Steam build `26294889` of R.E.P.O. (version 0.5.0, Sunstone Update): save format, password, item and cosmetic lists. After a game update the info dialog shows a hint, and the item and cosmetic lists are re-read from the game files automatically; if the game stores them differently, the editor uses its built-in lists until a new version of the editor follows. If the save format itself changes, the editor refuses to read a save instead of damaging it.
+- Tested in game with build `26294889` (Sunstone Update): edited saves load, and the new items work in the truck, including the unfinished (WIP) ones. Before that with build `23363152`: every run value, every player upgrade (including current HP and "Full heal"), every weapon and item in the truck and all 547 cosmetics of that build work.
 - Windows only. R.E.P.O. must be installed: the editor reads the password of the saves from the game files. Without the game folder it cannot open encrypted saves (it then shows a hint) and uses its built-in item and cosmetic lists.
 
 ## How it works

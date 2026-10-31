@@ -1,5 +1,7 @@
 # <img src="build/icon.png" alt="" width="40" height="40" align="top"> REPO Save Editor
 
+**✅ Kompatibel mit dem Sunstone Update** von R.E.P.O. (Spielversion 0.5.0), ab Editor-Version 1.1.2: Die neuen Items und Cosmetics sind dabei, bearbeitete Spielstände sind im Spiel getestet.
+
 Windows-App, um Spielstände von **R.E.P.O.** zu sichern, zu bearbeiten und wiederherzustellen: Run-Werte, Spieler-Upgrades, Waffen und Items im Truck sowie Cosmetics.
 
 [English](README.md)
@@ -14,12 +16,12 @@ Windows-App, um Spielstände von **R.E.P.O.** zu sichern, zu bearbeiten und wied
 |---|---|
 | Run & Team | Teamname, Level, Geld, Leben, Ladestation, Gesamtbeute, Kaufzähler für Upgrade-Preise zurücksetzen |
 | Spieler | Alle 13 Upgrades pro Spieler (Health, Stamina, Extra Jump, Tumble Launch, Range, Strength, Throw, Sprint Speed, Crouch Rest, Tumble Wings, Tumble Climb, Death Head Battery, Map Player Count), aktuelle HP, Krone |
-| Waffen & Items | Alle 59 Items des Spiels in den Truck legen oder entfernen, Akkus aufladen |
+| Waffen & Items | Alle 60 Items des Spiels in den Truck legen oder entfernen, Akkus aufladen; dazu die 3 Items, die das Spiel als unfertig (WIP) markiert, gekennzeichnet und mit Warnhinweis |
 | Profile | Mitgelieferte Schnellprofile und eigene, auf jeden Spielstand anwendbar |
 | Backups | Alle Backups aller Spielstände in einer Liste, mit Teamname, Level und Geld; mit einem Klick wiederherstellen, auch Spielstände, die das Spiel gelöscht hat; jedes Backup mit dem aktuellen Stand vergleichen |
 | Experte | Den kompletten Spielstand als JSON bearbeiten |
 | Sprache | Deutsch oder Englisch, Umschalter **DE \| EN** oben rechts; die Wahl bleibt gespeichert (ohne Wahl gilt die Windows-Sprache) |
-| Cosmetics (global) | Einzelne, gefilterte oder alle 547 Cosmetics freischalten; filtern nach Kategorie, Typ, Seltenheit (Common bis Ultra Rare) und Status; Cosmetics mit fester Farbe sind markiert |
+| Cosmetics (global) | Einzelne, gefilterte oder alle 557 Cosmetics freischalten; filtern nach Kategorie, Typ, Seltenheit (Common bis Ultra Rare) und Status; Cosmetics mit fester Farbe sind markiert |
 
 Außerdem: **Kopie anlegen** erzeugt aus einem Spielstand einen neuen Slot, z. B. zum gefahrlosen Ausprobieren. Jede Änderung steht mit „vorher → nachher“ in einer Liste und lässt sich einzeln zurücknehmen, bevor etwas gespeichert wird.
 
@@ -89,8 +91,8 @@ Optional kann `%APPDATA%\REPO Save Editor\config.json` die Ordner überschreiben
 
 ## Stand
 
-- Zuletzt geprüft mit Steam-Build `23363152` von R.E.P.O. Nach einem Spiel-Update zeigt der Info-Dialog einen Hinweis, und Item- und Cosmetic-Liste werden automatisch neu aus den Spieldateien gelesen. Ändert sich das Spielstand-Format selbst, verweigert der Editor das Lesen, statt etwas kaputt zu machen.
-- Im Spiel mit diesem Build getestet: Bearbeitete Spielstände lassen sich laden, und alle Run-Werte, alle Spieler-Upgrades (samt aktueller HP und „Voll heilen“), alle Waffen und Items im Truck sowie alle 547 Cosmetics funktionieren.
+- Zuletzt geprüft mit Steam-Build `26294889` von R.E.P.O. (Version 0.5.0, Sunstone Update): Spielstand-Format, Passwort, Item- und Cosmetic-Liste. Nach einem Spiel-Update zeigt der Info-Dialog einen Hinweis, und Item- und Cosmetic-Liste werden automatisch neu aus den Spieldateien gelesen; legt das Spiel sie anders ab, nimmt der Editor seine mitgelieferten Listen, bis eine neue Editor-Version folgt. Ändert sich das Spielstand-Format selbst, verweigert der Editor das Lesen, statt etwas kaputt zu machen.
+- Im Spiel getestet mit Build `26294889` (Sunstone Update): Bearbeitete Spielstände lassen sich laden, und die neuen Items funktionieren im Truck, auch die unfertigen (WIP). Davor mit Build `23363152`: Alle Run-Werte, alle Spieler-Upgrades (samt aktueller HP und „Voll heilen“), alle Waffen und Items im Truck sowie alle 547 Cosmetics dieses Builds funktionieren.
 - Nur Windows. R.E.P.O. muss installiert sein: Das Passwort der Spielstände liest der Editor aus den Spieldateien. Ohne Spielordner kann er verschlüsselte Spielstände nicht öffnen (er zeigt dann einen Hinweis) und nutzt seine mitgelieferten Item- und Cosmetic-Listen.
 
 ## Technik

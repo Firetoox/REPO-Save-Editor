@@ -221,6 +221,7 @@ h1 { margin-top: 6px; font-family: var(--display); font-size: 34px; line-height:
 .tag.accent { background: var(--accent-soft); color: var(--accent); }
 .tag.info { background: var(--info-bg); color: var(--info-fg); }
 .tag.bad { background: var(--bad-bg); color: var(--bad-fg); }
+.tag.warn { background: var(--warn-bg); color: var(--warn-fg); }
 .trow .caps-num { font-family: var(--display); font-weight: 600; }
 .trow .file { color: var(--soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -521,6 +522,11 @@ const TEXTS = {
   'items.add': ['{label} hinzufügen', 'Add {label}'],
   'items.addButton': ['Hinzufügen', 'Add'],
   'items.disabled': ['deaktiviert', 'disabled'],
+  'items.wip': ['unfertig (WIP)', 'unfinished (WIP)'],
+  'items.wipHint': ['Die Entwickler haben dieses Item als unfertig markiert. Der Shop verkauft es nicht.',
+    'The developers marked this item as unfinished. The shop does not sell it.'],
+  'items.wipWarn': ['Du legst unfertige Items in den Truck: {items}. Die Entwickler haben sie als unfertig (WIP) markiert, und der Shop verkauft sie nicht. Im Spiel funktionieren sie vielleicht nicht richtig oder stören den Run.',
+    'You are putting unfinished items into the truck: {items}. The developers marked them as unfinished (WIP), and the shop does not sell them. In the game they may not work properly or may disturb the run.'],
   'items.note': ['Neue Items erscheinen beim Laden des nächsten Levels im Truck. Mehr als das Shop-Limit ist möglich, kann den Truck aber überfüllen.',
     'New items appear in the truck when the next level loads. More than the shop limit is possible but can overfill the truck.'],
 
@@ -727,10 +733,11 @@ const TEXTS = {
   'info.backups': ['Backup-Ordner', 'Backup folder'],
   'info.items': ['Item-Liste', 'Item list'],
   'info.itemsValue': ['{n} Items aus {source}', '{n} items from {source}'],
+  'info.itemsWip': ['davon {n} unfertig (WIP)', '{n} of them unfinished (WIP)'],
   'info.cosmetics': ['Cosmetic-Liste', 'Cosmetic list'],
   'info.cosmeticsValue': ['{n} Cosmetics aus {source}', '{n} cosmetics from {source}'],
-  'info.updateWarn': ['R.E.P.O. wurde seit dem letzten Test aktualisiert. Item- und Cosmetic-Liste liest der Editor automatisch neu ein. Hat sich das Spielstand-Format geändert, verweigert er das Lesen, statt etwas kaputt zu machen. Teste nach Updates zuerst an einer Kopie.',
-    'R.E.P.O. has been updated since the last test. The editor re-reads the item and cosmetic lists automatically. If the save format itself changed, it refuses to read saves instead of damaging them. After updates, test with a copy first.'],
+  'info.updateWarn': ['R.E.P.O. wurde seit dem letzten Test aktualisiert. Item- und Cosmetic-Liste liest der Editor automatisch neu ein; kann er sie nicht lesen, nimmt er seine mitgelieferten Listen (siehe oben). Hat sich das Spielstand-Format geändert, verweigert er das Lesen, statt etwas kaputt zu machen. Teste nach Updates zuerst an einer Kopie.',
+    'R.E.P.O. has been updated since the last test. The editor re-reads the item and cosmetic lists automatically; if it cannot read them, it uses its built-in lists (see above). If the save format itself changed, it refuses to read saves instead of damaging them. After updates, test with a copy first.'],
   'info.config': ['Andere Ordner trägst du in {config} ein ({keys}); Änderungen wirken nach einem Neustart des Editors. Schriften: Chakra Petch und IBM Plex, SIL Open Font License.',
     'Other folders go into {config} ({keys}); changes take effect after restarting the editor. Fonts: Chakra Petch and IBM Plex, SIL Open Font License.'],
 
@@ -887,8 +894,11 @@ const cosColor = key => (COS_CATEGORIES.find(c => c[0] === key) || [key, 'var(--
 const cosCategoryName = key => t(TEXTS['cosCat.' + key] ? 'cosCat.' + key : 'cosCat.Other');
 const rarityName = r => S.server.cosmetics.rarities[r];
 function itemInfo(key) {
-  return C().items.find(i => i.key === key) || { key, label: key.replace(/^Item /, ''), cat: 'other', max: 1, disabled: false };
+  return C().items.find(i => i.key === key) || { key, label: key.replace(/^Item /, ''), cat: 'other', max: 1, disabled: false, wip: false };
 }
+/** Names of unfinished (WIP) items the edit puts into the truck or adds more of. */
+const wipAdded = () => Object.keys(S.edit.inv).filter(k => itemInfo(k).wip && count(S.edit.inv, k) > count(S.loaded.model.inv, k)).map(k => itemInfo(k).label);
+const wipNote = () => (wipAdded().length ? notice('warn', t('items.wipWarn', { items: wipAdded().join(', ') })) : '');
 const upgradeInfo = f => C().upgrades.find(u => u.field === f) || { field: f, name: f.replace(/^playerUpgrade/, ''), hint: { de: t('players.unknownUpgrade') } };
 const runField = key => C().run.find(f => f.key === key);
 const playerColor = i => PLAYER_COLORS[i % PLAYER_COLORS.length];
@@ -976,7 +986,7 @@ const runningNote = () => (S.server.gameRunning ? notice('warn', t('dlg.running'
 // Built-in profiles only raise values ("at least"); own profiles set values exactly.
 function builtinProfiles() {
   const allUp = Object.fromEntries(C().upgrades.map(u => [u.field, 10]));
-  const weapons = Object.fromEntries(C().items.filter(it => !it.disabled && (it.cat === 'gun' || it.cat === 'melee')).map(it => [it.key, 1]));
+  const weapons = Object.fromEntries(C().items.filter(it => !it.disabled && !it.wip && (it.cat === 'gun' || it.cat === 'melee')).map(it => [it.key, 1]));
   const heal = { 'Item Health Pack Small': 3, 'Item Health Pack Medium': 3, 'Item Health Pack Large': 3, 'Item ReviveItem': 1 };
   const profile = (id, key, values) => Object.assign({ id, builtin: true, min: true, name: t('prof.' + key + '.name'), desc: t('prof.' + key + '.desc', { money: money(1000) }) }, values);
   return [
@@ -1402,10 +1412,11 @@ function viewItems() {
     const control = v === 0
       ? html`<button class="addbtn" data-act="inv-add" data-key="${it.key}" data-add="1" aria-label="${t('items.add', { label: it.label })}">${svg(I.plus, 14, 2.4)}${t('items.addButton')}</button>`
       : html`<div class="countbar">${stepper({ act: 'inv-add', data: { key: it.key }, step: 1, label: it.label }, middle)}</div>`;
-    const disabled = it.disabled ? html` <span class="tag bad">${t('items.disabled')}</span>` : '';
+    const tag = it.disabled ? html` <span class="tag bad">${t('items.disabled')}</span>`
+      : it.wip ? html` <span class="tag warn" title="${t('items.wipHint')}">${t('items.wip')}</span>` : '';
     return html`<div class="itemcard${v ? ' owned' : ''}${changed ? ' changed' : ''}">
       <div class="itemtop"><div class="itemicon" style="background: ${tint(cat.color, 16)}; color: ${cat.color}">${svg(I.cat[it.cat] || I.cat.other, 22)}</div>
-      <div class="shrink"><div class="strong">${it.label}${disabled}</div><div class="itemkey" title="${it.key}">${it.key}</div></div></div>
+      <div class="shrink"><div class="strong">${it.label}${tag}</div><div class="itemkey" title="${it.key}">${it.key}</div></div></div>
       ${control}</div>`;
   });
   const batt = a.batteryLow > 0
@@ -1419,6 +1430,7 @@ function viewItems() {
       <div class="between truckhead"><h2 class="caps">${t('items.truck')}</h2>
         <div class="small muted">${truckCount} · <span class="mono">itemsPurchased</span></div></div>
       <div class="hstack">${truck.length ? truck : html`<span class="muted">${t('items.truckEmpty')}</span>`}</div></div>
+    ${wipNote()}
     ${batt}
     <div class="hstack gap-12">${searchBox('item-search', 'item-search', S.items.q, t('items.search'), t('items.searchLabel'))}
       <div class="small muted">${t('items.shown', { n: shown.length, total: all.length })}</div></div>
@@ -1698,7 +1710,7 @@ function viewModal(chg) {
     write: () => dialog({
       title: t('dlg.write.title'),
       lead: t('dlg.write.lead', { changes: tp('n.changeWill', chg.length), team: S.edit.team }),
-      body: html`${changeList(chg, 8)}${writeTargets(backupPath(S.saveId), S.loaded.file)}${runningNote()}
+      body: html`${changeList(chg, 8)}${writeTargets(backupPath(S.saveId), S.loaded.file)}${runningNote()}${wipNote()}
         ${rawDirty() ? notice('info', t('dlg.write.rawLost')) : ''}`,
       actions: html`${cancelButton()}${confirmButton('confirm-write', t(S.busy ? 'btn.writing' : 'btn.writeNow'), running || S.busy)}`
     }),
@@ -1788,6 +1800,7 @@ function viewModal(chg) {
       const row = (key, v, mono) => html`<div class="muted">${t(key)}</div><div class="${mono ? 'mono' : ''}">${v}</div>`;
       const build = g.build ? g.build + (g.updated ? ' · ' + t('info.updated', { date: fmtTime(g.updated) }) : '') : t('info.unknown');
       const itemCount = C().items.filter(i => !i.disabled).length;
+      const wipCount = C().items.filter(i => !i.disabled && i.wip).length;
       const keys = ['savesDir', 'metaFile', 'backupDir', 'gameDir'].map((k, i) => html`${i ? ', ' : ''}<span class="mono">${k}</span>`);
       return dialog({
         title: 'REPO Save Editor',
@@ -1801,7 +1814,7 @@ function viewModal(chg) {
             ${row('info.saves', breakable(displayPath(st.savesDir)), true)}
             ${row('info.metaFile', breakable(displayPath(st.metaFile)), true)}
             ${row('info.backups', breakable(displayPath(st.backupDir)), true)}
-            ${row('info.items', t('info.itemsValue', { n: itemCount, source: t('source.' + C().source) }))}
+            ${row('info.items', t('info.itemsValue', { n: itemCount, source: t('source.' + C().source) }) + (wipCount ? ', ' + t('info.itemsWip', { n: wipCount }) : ''))}
             ${row('info.cosmetics', t('info.cosmeticsValue', { n: COS().length, source: t('source.' + st.cosmetics.source) }))}
           </div>
           ${buildChanged() ? notice('warn', t('info.updateWarn')) : ''}

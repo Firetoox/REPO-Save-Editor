@@ -12,6 +12,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { test, before, after } = require('node:test');
 const { testFiles } = require('./helpers');
+const COSMETICS = require('../lib/cosmetics.json').length; // shipped list = the game's list of the tested build
 
 const argv = process.argv.slice(2);
 const flag = name => { const i = argv.indexOf(name); if (i >= 0) argv.splice(i, 1); return i >= 0; };
@@ -225,6 +226,24 @@ test('Items: list, remove, add', async () => {
   removed = owned || null;
 });
 
+test('Items: unfinished ones are marked, adding one shows a warning', async () => {
+  await js('S.items.q = ""; S.items.cat = "all"; render(); return true');
+  const wip = await js('return C().items.filter(it => it.wip && !it.disabled && !S.edit.inv[it.key]).map(it => it.key)');
+  if (!wip.length) throw new Error('no unfinished item offered');
+  const tags = await js('return document.querySelectorAll(".itemcard .tag.warn").length');
+  if (tags < wip.length) throw new Error('WIP tags: ' + tags);
+  const label = await js('return itemInfo(' + JSON.stringify(wip[0]) + ').label');
+  const warned = () => js('return [...document.querySelectorAll(".notice.warn")].some(n => n.innerText.includes(' + JSON.stringify(label) + '))');
+  if (await warned()) throw new Error('warning before adding');
+  await click('[data-act=inv-add][data-key="' + wip[0] + '"][data-add="1"]');
+  if (!await warned()) throw new Error('no warning after adding');
+  await click('[data-act=open-write]');
+  if (!await js('return [...document.querySelectorAll(".dialog .notice.warn")].some(n => n.innerText.includes(' + JSON.stringify(label) + '))')) throw new Error('no warning in the save dialog');
+  await click('[data-act=close-modal]');
+  await click('[data-act=inv-add][data-key="' + wip[0] + '"][data-add="-1"]');
+  if (await warned()) throw new Error('warning stays after removing');
+});
+
 test('Applying a profile creates changes', async () => {
   await click('[data-tab=profiles]');
   await click('[data-act=profile-apply][data-pid=b-up10]');
@@ -265,7 +284,8 @@ test('Save changes: the file holds exactly the changes', async () => {
 test('Backups: compare a game backup', async () => {
   await click('[data-tab=backups]');
   await until('S.backups && S.backups.length', 'backups');
-  const i = await js('const i = S.backups.findIndex(b => b.source === "game"); return i >= 0 ? i : S.backups.findIndex(b => b.ok)');
+  // without game backups (real saves can have none): the state before the earlier save, which differs
+  const i = await js('const pick = [b => b.source === "game", b => b.ok && b.reason === "before-save", b => b.ok].map(f => S.backups.findIndex(f)).find(n => n >= 0); return pick === undefined ? -1 : pick');
   await click('[data-act=compare][data-i="' + i + '"]');
   await until('S.modal && S.modal.type === "compare" && !S.modal.loading', 'comparison');
   if (!(await js('return S.modal.diff.length') > 0)) throw new Error('no differences');
@@ -353,11 +373,11 @@ test('Cosmetics: rarity and fixed color', async () => {
   if (r.n !== 31 || r.ultra !== 31) throw new Error('Ultra Rare: ' + JSON.stringify(r));
   await click('[data-act=cos-rarity][data-rarity="all"]');
   const fixed = await js('return [...document.querySelectorAll(".coscard")].filter(c => c.innerText.includes(t("cos.fixed"))).length');
-  if (fixed !== 73) throw new Error('fixed color: ' + fixed);
+  if (fixed !== 77) throw new Error('fixed color: ' + fixed);
 });
 
 test('Cosmetics: lock, unlock, save; unknown ones stay', async () => {
-  const unknownBefore = files.read(files.metaFile).cosmeticUnlocks.value.filter(i => i >= 547);
+  const unknownBefore = files.read(files.metaFile).cosmeticUnlocks.value.filter(i => i >= COSMETICS);
   const locked = await js('const ids = COS().map(c => c.id).filter(id => S.metaEdit.has(id) && !S.meta.equipped.includes(id)).slice(0, 3); ids.forEach(id => document.querySelector("[data-act=cos-toggle][data-cid=\\"" + id + "\\"]").click()); return ids.length');
   if (locked !== 3) throw new Error('nothing to lock');
   const unlocked = await js('return S.meta.unlocks.length');

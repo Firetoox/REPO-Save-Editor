@@ -12,7 +12,7 @@
   color-scheme: dark;
   --bg: #111214; --panel: #1A1C20; --panel2: #1F2226; --line: #2A2D33; --line3: #3A3F46; --code-bg: #0D0E10;
   --text: #ECEAE4; --soft: #C9CDD3; --muted: #9BA0A8;
-  --accent: #F5A524; --on-accent: #17120A; --info: #6FB8FF;
+  --accent: #F5A524; --on-accent: #17120A; --info: #6FB8FF; --ok: #5FD1A8;
   --display: 'Chakra Petch', 'Segoe UI', sans-serif;
   --sans: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
   --mono: 'IBM Plex Mono', Consolas, monospace;
@@ -60,6 +60,9 @@ p { margin: 0; }
 /* hero */
 .hero { padding: 56px 0 24px; }
 @media (min-width: 720px) { .hero { padding: 88px 0 32px; } }
+.compat { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 22px; padding: 8px 16px 8px 12px; border: 1px solid rgba(95, 209, 168, .5); border-radius: 12px; background: rgba(95, 209, 168, .1); font-size: 15px; color: var(--soft); }
+.compat strong { font-family: var(--display); font-weight: 600; font-size: 17px; letter-spacing: .03em; color: var(--ok); }
+.compat svg { width: 22px; height: 22px; flex: none; color: var(--ok); }
 .eyebrow { font-family: var(--display); font-weight: 600; font-size: 14px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; }
 .hero h1 { font-size: clamp(38px, 7vw, 68px); letter-spacing: .01em; max-width: 14ch; }
 .lead { font-size: clamp(18px, 2.2vw, 21px); color: var(--soft); max-width: 46em; margin-top: 22px; }

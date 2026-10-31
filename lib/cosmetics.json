@@ -545,5 +545,15 @@
   {"id":543,"name":"Curly Bob","type":"Hat","category":"Head","rarity":1,"colorable":true},
   {"id":544,"name":"Dreads","type":"Hat","category":"Head","rarity":1,"colorable":true},
   {"id":545,"name":"Short Afro","type":"Hat","category":"Head","rarity":1,"colorable":true},
-  {"id":546,"name":"Curly Bun","type":"Hat","category":"Head","rarity":1,"colorable":true}
+  {"id":546,"name":"Curly Bun","type":"Hat","category":"Head","rarity":1,"colorable":true},
+  {"id":547,"name":"Cowboy Hat","type":"Hat","category":"Head","rarity":1,"colorable":true},
+  {"id":548,"name":"Cowboy boot","type":"Foot Left","category":"Legs","rarity":1,"colorable":true},
+  {"id":549,"name":"Cowboy boot","type":"Foot Right","category":"Legs","rarity":1,"colorable":true},
+  {"id":550,"name":"Sheriff star","type":"Bodywear Top","category":"Body","rarity":1,"colorable":false},
+  {"id":551,"name":"Hay","type":"Headwear Bottom","category":"Head","rarity":0,"colorable":false},
+  {"id":552,"name":"Miner's hat","type":"Hat","category":"Head","rarity":1,"colorable":false},
+  {"id":553,"name":"Rain boot","type":"Foot Left","category":"Legs","rarity":0,"colorable":true},
+  {"id":554,"name":"Rain boot","type":"Foot Right","category":"Legs","rarity":0,"colorable":true},
+  {"id":555,"name":"Holster","type":"Bodywear Bottom","category":"Body","rarity":0,"colorable":false},
+  {"id":556,"name":"Neck Bandana","type":"Bodywear Top","category":"Body","rarity":0,"colorable":true}
 ]

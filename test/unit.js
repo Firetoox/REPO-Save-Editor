@@ -236,49 +236,60 @@ test('Catalog: built-in list', () => {
   assert.ok(c.items.length >= 55 && c.items.every(it => ids.has(it.cat) && it.max >= 1 && !it.disabled));
   assert.strictEqual(new Set(c.items.map(it => it.key)).size, c.items.length, 'no duplicate items');
   assert.strictEqual(c.items.find(it => it.key === 'Item Upgrade Map Player Count').max, 1);
+  assert.deepStrictEqual(c.items.filter(it => it.wip).map(it => it.key).sort(), ['Item Gun Revolver', 'Item Orb Battery', 'Item WalkieTalkie']);
   assert.strictEqual(c.upgrades.length, 13);
   assert.strictEqual(catalog.loadCatalog(null, null).source, 'builtin');
 });
 
 test('Catalog: scanned data is checked before use', () => {
-  const scanned = catalog.ITEMS.map(([key, label]) => ({ key, label: label + '!', max: 2, disabled: false }));
-  scanned.push({ key: 'Item Orb Test', label: 'Test Orb', max: 0, disabled: true }, { key: 42 }, null);
+  const scanned = catalog.ITEMS.map(([key, label]) => ({ key, label: label + '!', max: 2, disabled: false, wip: key === 'Item Gun Handgun' }));
+  scanned.push({ key: 'Item Orb Test', label: 'Test Orb', max: 0, disabled: true }, { key: 'Item Gun Test', label: 'Test Gun', max: 1, wip: 'yes' }, { key: 42 }, null);
   const c = catalog.buildCatalog({ scanned });
   assert.strictEqual(c.source, 'game');
-  assert.strictEqual(c.items.find(it => it.key === 'Item Gun Handgun').label, 'Gun!');
-  assert.deepStrictEqual(c.items.find(it => it.key === 'Item Orb Test'), { key: 'Item Orb Test', label: 'Test Orb', cat: 'staff', max: 1, disabled: true });
+  assert.deepStrictEqual(['Item Gun Handgun', 'Item Gun Revolver'].map(k => c.items.find(it => it.key === k)).map(it => [it.label, it.wip]),
+    [['Gun!', true], ['Human Gun!', false]], 'the game decides what is unfinished');
+  assert.deepStrictEqual(c.items.find(it => it.key === 'Item Orb Test'), { key: 'Item Orb Test', label: 'Test Orb', cat: 'staff', max: 1, disabled: true, wip: false });
+  assert.strictEqual(c.items.find(it => it.key === 'Item Gun Test').wip, false, 'only true counts');
   assert.strictEqual(catalog.buildCatalog({ scanned: scanned.slice(0, 5) }).source, 'builtin', 'too few hits');
   assert.strictEqual(catalog.categoryFor('Item Brand New'), 'other');
 });
 
-test('Catalog: item names and limits are read from the game files', () => {
+test('Catalog: item names and limits are read from the game files (both layouts)', () => {
   const game = path.join(tmp, 'scan-game');
   const assets = path.join(game, 'REPO_Data', 'resources.assets');
   fs.mkdirSync(path.dirname(assets), { recursive: true });
-  // a limit of 100 or more is not plausible and is ignored
-  const items = catalog.ITEMS.slice(0, 24).map(([key, label], i) => ({ key, label: label + ' (scan)', disabled: i === 3, max: i === 5 ? 150 : 1 + (i % 4) }));
-  fs.writeFileSync(assets, fakeResources(items));
-  assert.deepStrictEqual(catalog.scanGameItems(game), items.map(it => ({ key: it.key, label: it.label, disabled: it.disabled, max: it.max < 100 ? it.max : null })));
+  // a limit of 100 or more is not plausible and is ignored; the prefab path may sit in a subfolder
+  // and differ in upper/lower case from the item name
+  const items = catalog.ITEMS.slice(0, 24).map(([key, label], i) => ({
+    key, label: label + ' (scan)', disabled: i === 3, wip: i === 7, max: i === 5 ? 150 : 1 + (i % 4),
+    prefab: i === 7 ? 'Items/Removed Items/' + key : i === 8 ? 'Items/' + key.toLowerCase() : undefined
+  }));
+  const expected = newer => items.map(it => ({ key: it.key, label: it.label, disabled: it.disabled, wip: newer && it.wip, max: it.max < 100 ? it.max : null }));
+  for (const newer of [true, false]) {
+    fs.writeFileSync(assets, fakeResources(items, { newer }));
+    assert.deepStrictEqual(catalog.scanGameItems(game), expected(newer), newer ? 'layout since build 26294889' : 'older layout');
+  }
+  fs.writeFileSync(assets, fakeResources(items, { newer: true }));
   const c = catalog.loadCatalog(game, path.join(tmp, 'scan-cache.json'));
   assert.strictEqual(c.source, 'game');
-  assert.deepStrictEqual([items[0], items[3], items[5]].map(it => c.items.find(x => x.key === it.key)).map(x => [x.label, x.disabled]),
-    [[items[0].label, false], [items[3].label, true], [items[5].label, false]]);
+  assert.deepStrictEqual([0, 3, 5, 7].map(i => c.items.find(x => x.key === items[i].key)).map(x => [x.label, x.disabled, x.wip]),
+    [[items[0].label, false, false], [items[3].label, true, false], [items[5].label, false, false], [items[7].label, false, true]]);
   // too few hits: the heuristic is not trusted and the built-in list stays
-  fs.writeFileSync(assets, fakeResources(items.slice(0, 5)));
+  fs.writeFileSync(assets, fakeResources(items.slice(0, 5), { newer: true }));
   assert.strictEqual(catalog.loadCatalog(game, path.join(tmp, 'scan-cache-few.json')).source, 'builtin');
 });
 
 test('Cosmetics: built-in list and fallback for a foreign game folder', () => {
   const c = loadCosmetics(null, null);
-  assert.deepStrictEqual([c.source, c.list.length], ['builtin', 547]);
-  assert.deepStrictEqual([0, 1, 2, 3].map(r => c.list.filter(x => x.rarity === r).length), [280, 131, 105, 31]);
-  assert.strictEqual(c.list.filter(x => x.colorable === false).length, 73);
+  assert.deepStrictEqual([c.source, c.list.length], ['builtin', 557]);
+  assert.deepStrictEqual([0, 1, 2, 3].map(r => c.list.filter(x => x.rarity === r).length), [285, 136, 105, 31]);
+  assert.deepStrictEqual([false, null].map(v => c.list.filter(x => x.colorable === v).length), [77, 0]);
   assert.ok(c.list.every((x, i) => x.id === i && typeof x.name === 'string' && typeof x.type === 'string'));
   const fake = path.join(tmp, 'fake-game');
   fs.mkdirSync(path.join(fake, 'REPO_Data'), { recursive: true });
   for (const f of ['sharedassets0.assets', 'level0', 'globalgamemanagers.assets']) fs.writeFileSync(path.join(fake, 'REPO_Data', f), 'not Unity');
   const fb = loadCosmetics(fake, path.join(tmp, 'cos-cache.json'));
-  assert.deepStrictEqual([fb.source, fb.list.length], ['builtin', 547]);
+  assert.deepStrictEqual([fb.source, fb.list.length], ['builtin', 557]);
   assert.ok(fb.fallbackReason);
   assert.throws(() => parseSerializedFile(path.join(fake, 'REPO_Data', 'level0')));
 });

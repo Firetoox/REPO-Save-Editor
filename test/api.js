@@ -14,6 +14,8 @@ const { testFiles, startEditor } = require('./helpers');
 const { maskPaths } = require('../lib/server');
 const es3 = require('../lib/es3');
 const { UNKNOWN_UNLOCK } = require('./fixtures');
+// the shipped cosmetic list: the same as the game's own list of the tested build
+const COSMETICS = require('../lib/cosmetics.json').length;
 
 const files = testFiles(process.argv.slice(2), 'Only run with copies: node test/api.js <savesDirCopy> <metaSaveCopy> <workDir>');
 fs.mkdirSync(files.work, { recursive: true });
@@ -59,7 +61,9 @@ test('State: lists, limits, game folder and password', async () => {
   const source = files.synthetic ? 'builtin' : 'game';
   assert.strictEqual(state.catalog.source, source);
   assert.strictEqual(state.cosmetics.source, source);
-  assert.strictEqual(state.cosmetics.list.length, 547);
+  assert.strictEqual(state.cosmetics.list.length, COSMETICS);
+  assert.ok(state.cosmetics.list.every(c => c.rarity !== null && c.colorable !== null), 'rarity and colour flag of every cosmetic');
+  assert.ok(state.catalog.items.some(it => it.wip && !it.disabled), 'unfinished items are offered (marked)');
   assert.deepStrictEqual(Object.keys(state.limits).sort(), ['hp', 'itemCount', 'profileName', 'purchases', 'teamName', 'upgradeLevel']);
   assert.ok(state.catalog.run.every(f => f.key && f.label && f.hint !== undefined));
   assert.strictEqual(state.gameDir, files.gameDir);
@@ -289,11 +293,11 @@ test('Cosmetics: unlocking all changes only cosmeticUnlocks, order stays', async
   const original = files.read(files.metaFile);
   const m = await ok('GET', '/api/meta');
   assert.deepStrictEqual(m.unlocks, original.cosmeticUnlocks.value);
-  const all = Array.from({ length: 547 }, (_, i) => i);
+  const all = Array.from({ length: COSMETICS }, (_, i) => i);
   const r = await ok('POST', '/api/meta', { hash: m.hash, unlocks: all });
   const written = files.read(files.metaFile);
   assert.deepStrictEqual(written.cosmeticUnlocks.value.slice(0, original.cosmeticUnlocks.value.length), original.cosmeticUnlocks.value);
-  assert.strictEqual(r.unlocked, 547, 'only known cosmetics are counted');
+  assert.strictEqual(r.unlocked, COSMETICS, 'only known cosmetics are counted');
   assert.ok(all.every(i => written.cosmeticUnlocks.value.includes(i)));
   written.cosmeticUnlocks = original.cosmeticUnlocks;
   assert.deepStrictEqual(written, original);
@@ -305,7 +309,7 @@ test('Cosmetics: equipped and unknown IDs stay, invalid ones are dropped', async
   const m = await ok('GET', '/api/meta');
   await ok('POST', '/api/meta', { hash: m.hash, unlocks: [-1, 9999, 'x'] });
   const unlocks = files.read(files.metaFile).cosmeticUnlocks.value;
-  const unknown = m.unlocks.filter(i => i >= 547);
+  const unknown = m.unlocks.filter(i => i >= COSMETICS);
   if (files.synthetic) assert.deepStrictEqual(unknown, [UNKNOWN_UNLOCK]);
   const expected = [...new Set(m.equipped.concat(unknown))].sort((a, b) => a - b);
   assert.deepStrictEqual([...unlocks].sort((a, b) => a - b), expected);
@@ -319,7 +323,7 @@ test('Cosmetics: restore the original', async () => {
   assert.strictEqual(list.some(b => b.source === 'game'), fs.existsSync(gameCopy));
   await ok('POST', '/api/meta-restore', { source: 'editor', file: orig.file, hash: (await ok('GET', '/api/meta')).hash });
   const restored = files.read(files.metaFile).cosmeticUnlocks.value;
-  assert.strictEqual(new Set(restored.filter(i => i < 547)).size, orig.unlocked);
+  assert.strictEqual(new Set(restored.filter(i => i < COSMETICS)).size, orig.unlocked);
   assert.ok(fs.readFileSync(files.metaFile).equals(fs.readFileSync(path.join(files.work, 'backups', 'MetaSave', orig.file))));
 });
 
@@ -334,7 +338,7 @@ test('Cosmetics: with the built-in list after a game update nothing is locked', 
     const m = await updated.ok('GET', '/api/meta');
     const r = await updated.ok('POST', '/api/meta', { hash: m.hash, unlocks: [] });
     assert.deepStrictEqual(files.read(files.metaFile).cosmeticUnlocks.value, m.unlocks, 'every unlock kept');
-    assert.strictEqual(r.unlocked, new Set(m.unlocks.filter(i => i >= 0 && i < 547)).size);
+    assert.strictEqual(r.unlocked, new Set(m.unlocks.filter(i => i >= 0 && i < COSMETICS)).size);
   } finally {
     await updated.editor.close();
     fs.rmSync(manifest, { force: true });
