@@ -71,9 +71,9 @@ test('English and German page: same sections and pictures, linked to each other'
   assert.ok(pictures(en).length >= 5);
   for (const [lang, html] of [['en', en], ['de', de]]) {
     assert.match(html, new RegExp('<html lang="' + lang + '">'));
-    assert.match(html, new RegExp('<link rel="canonical" href="' + SITE + (lang === 'de' ? 'de/' : '') + '">'));
-    assert.match(html, new RegExp('hreflang="en" href="' + SITE + '"'));
-    assert.match(html, new RegExp('hreflang="de" href="' + SITE + 'de/"'));
+    for (const tag of ['<link rel="canonical" href="' + SITE + (lang === 'de' ? 'de/' : '') + '">', 'hreflang="en" href="' + SITE + '"', 'hreflang="de" href="' + SITE + 'de/"']) {
+      assert.ok(html.includes(tag), lang + ' page contains ' + tag);
+    }
     assert.ok(attrs(html, 'src').filter(u => u.includes('screenshots/')).every(u => u.includes('/' + lang + '/')), lang + ' page shows ' + lang + ' pictures');
     assert.ok(attrs(html, 'alt').filter(a => a).length >= pictures(html).length, 'every picture has a description');
   }
