@@ -43,7 +43,7 @@
     "electron": "44.9.2",
     "electron-builder": "26.18.0",
     "eslint": "10.13.0",
-    "globals": "17.13.0"
+    "globals": "17.14.0"
   },
   "build": {
     "appId": "de.reposaveeditor.app",
