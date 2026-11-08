@@ -1,7 +1,7 @@
 {
   "name": "repo-save-editor",
   "productName": "REPO Save Editor",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "Back up, edit and restore R.E.P.O. save games (German and English) – unofficial fan tool",
   "keywords": [
     "repo",
@@ -40,10 +40,10 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "electron": "44.9.2",
+    "electron": "45.2.3",
     "electron-builder": "26.18.0",
-    "eslint": "10.13.0",
-    "globals": "17.13.0"
+    "eslint": "10.14.0",
+    "globals": "17.14.0"
   },
   "build": {
     "appId": "de.reposaveeditor.app",
