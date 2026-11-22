@@ -72,12 +72,20 @@ const cdp = (method, params = {}) => new Promise(res => { const id = ++seq; pend
 /** Runs an async function body in the page and returns its result. */
 const js = async expr => {
   const r = await cdp('Runtime.evaluate', { expression: '(async () => { ' + expr + ' })()', awaitPromise: true, returnByValue: true });
+  if (r.error) throw Object.assign(new Error('DevTools: ' + r.error.message), { devtools: true }); // e.g. page context replaced by a reload
   if (r.result.exceptionDetails) throw new Error(r.result.exceptionDetails.exception ? r.result.exceptionDetails.exception.description : 'JS error');
   return r.result.result.value;
 };
-/** Waits until the page expression `cond` is true (up to 15 s). */
+/** Waits until the page expression `cond` is true (up to 15 s); a page that is just reloading counts as "not yet". */
 const until = async (cond, what) => {
-  for (let i = 0; i < 75; i++) { if (await js('return !!(' + cond + ')')) return; await sleep(200); }
+  for (let i = 0; i < 75; i++) {
+    try {
+      if (await js('return !!(' + cond + ')')) return;
+    } catch (e) {
+      if (!e.devtools) throw e;
+    }
+    await sleep(200);
+  }
   throw new Error('timeout: ' + what);
 };
 const shot = async name => {
