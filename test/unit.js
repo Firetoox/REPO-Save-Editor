@@ -112,11 +112,16 @@ test('Password: read the strings of a .NET file, find the right one with a probe
 });
 
 test('Password: a damaged probe file does not hide it', () => {
-  // the smallest candidate is tried first; here it is garbage that only looks encrypted
+  // the smallest candidate is tried first; here it is garbage that only looks encrypted (fixed bytes:
+  // random ones would sometimes start with "{")
   const damaged = path.join(tmp, 'damaged.es3');
-  fs.writeFileSync(damaged, crypto.randomBytes(48));
+  fs.writeFileSync(damaged, crypto.createHash('sha384').update('damaged probe').digest());
   assert.strictEqual(findPassword({ gameDir: fixtures.gameDir, files: [damaged, demoFile] }).password, TEST_PASSWORD);
   assert.strictEqual(findPassword({ gameDir: fixtures.gameDir, files: [damaged] }).reason, 'notFound');
+  // an encrypted file whose random IV starts with "{" is still a probe
+  const braced = path.join(tmp, 'braced.es3');
+  fs.writeFileSync(braced, files.encrypt(KAT_TEXT, { iv: Buffer.from('{"x":"0123456789') }));
+  assert.strictEqual(findPassword({ gameDir: fixtures.gameDir, files: [braced] }).password, TEST_PASSWORD);
 });
 
 test('Password: reasons when it is not found', () => {
