@@ -73,6 +73,13 @@ test('ES3: damaged, foreign and oversized files', () => {
   assert.throws(() => files.decrypt(Buffer.concat([KAT_IV, cipher.update(bomb), cipher.final()])), code('es3.invalid.unpacked'));
 });
 
+test('ES3: an encrypted file whose IV starts with "{" is not taken for plain JSON', () => {
+  const file = files.encrypt(KAT_TEXT, { iv: Buffer.from('{"x":"0123456789') });
+  assert.strictEqual(file.toString('latin1', 0, 16), '{"x":"0123456789', 'IV of printable text');
+  assert.deepStrictEqual([files.readSave(file).json.teamName.value, files.readSave(file).encrypted], ['KAT', true]);
+  assert.throws(() => es3.readSave(file, null), err => err.code === 'es3.noPassword');
+});
+
 test('ES3: a byte order mark is skipped, unreadable content is a clear 422', () => {
   const bom = files.readSave(Buffer.from('\uFEFF{"a":{"__type":"int","value":1}}', 'utf8'));
   assert.deepStrictEqual([bom.json.a.value, bom.encrypted], [1, false]);

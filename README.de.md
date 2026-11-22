@@ -1,6 +1,6 @@
 # <img src="build/icon.png" alt="" width="40" height="40" align="top"> REPO Save Editor
 
-**✅ Kompatibel mit dem Sunstone Update** von R.E.P.O. (Spielversion 0.5.0), ab Editor-Version 1.1.2: Die neuen Items und Cosmetics sind dabei, bearbeitete Spielstände sind im Spiel getestet.
+**✅ Kompatibel mit dem Sunstone Update** von R.E.P.O. (Spielversion 0.5.2), ab Editor-Version 1.1.2: Die neuen Items und Cosmetics sind dabei, bearbeitete Spielstände sind im Spiel getestet.
 
 Windows-App, um Spielstände von **R.E.P.O.** zu sichern, zu bearbeiten und wiederherzustellen: Run-Werte, Spieler-Upgrades, Waffen und Items im Truck sowie Cosmetics.
 
@@ -91,7 +91,7 @@ Optional kann `%APPDATA%\REPO Save Editor\config.json` die Ordner überschreiben
 
 ## Stand
 
-- Zuletzt geprüft mit Steam-Build `26294889` von R.E.P.O. (Version 0.5.0, Sunstone Update): Spielstand-Format, Passwort, Item- und Cosmetic-Liste. Nach einem Spiel-Update zeigt der Info-Dialog einen Hinweis, und Item- und Cosmetic-Liste werden automatisch neu aus den Spieldateien gelesen; legt das Spiel sie anders ab, nimmt der Editor seine mitgelieferten Listen, bis eine neue Editor-Version folgt. Ändert sich das Spielstand-Format selbst, verweigert der Editor das Lesen, statt etwas kaputt zu machen.
+- Zuletzt geprüft mit Steam-Build `26732417` von R.E.P.O. (Version 0.5.2, Sunstone Update): Spielstand-Format, Passwort, Item- und Cosmetic-Liste. Nach einem Spiel-Update zeigt der Info-Dialog einen Hinweis, und Item- und Cosmetic-Liste werden automatisch neu aus den Spieldateien gelesen; legt das Spiel sie anders ab, nimmt der Editor seine mitgelieferten Listen, bis eine neue Editor-Version folgt. Ändert sich das Spielstand-Format selbst, verweigert der Editor das Lesen, statt etwas kaputt zu machen.
 - Im Spiel getestet mit Build `26294889` (Sunstone Update): Bearbeitete Spielstände lassen sich laden, und die neuen Items funktionieren im Truck, auch die unfertigen (WIP). Davor mit Build `23363152`: Alle Run-Werte, alle Spieler-Upgrades (samt aktueller HP und „Voll heilen“), alle Waffen und Items im Truck sowie alle 547 Cosmetics dieses Builds funktionieren.
 - Nur Windows. R.E.P.O. muss installiert sein: Das Passwort der Spielstände liest der Editor aus den Spieldateien. Ohne Spielordner kann er verschlüsselte Spielstände nicht öffnen (er zeigt dann einen Hinweis) und nutzt seine mitgelieferten Item- und Cosmetic-Listen.
 
